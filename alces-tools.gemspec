@@ -1,16 +1,16 @@
 $:.push File.expand_path("../lib", __FILE__)
-require 'alces-gem-base/version'
+require 'alces-tools/version'
 
 Gem::Specification.new do |s|
-  s.name = 'alces-gem-base'
-  s.version = Alces::Gem::Base::VERSION
+  s.name = 'alces-tools'
+  s.version = Alces::Tools::VERSION
   s.platform = Gem::Platform::RUBY
-  s.date = '2011-09-13'
-  s.authors = ['Mark J. Titorenko']
+  s.date = '2011-11-10'
+  s.authors = ['Stephen F. Norledge', 'Mark J. Titorenko']
   s.email = 'mark.titorenko@alces-software.com'
-  s.homepage = 'http://github.com/mjtko/alces-gem-base'
-  s.summary = %Q{TODO: one-line summary of your gem}
-  s.description = %Q{TODO: detailed description of your gem}
+  s.homepage = 'http://github.com/alces-software/alces-tools'
+  s.summary = %Q{Base utility and tool classes to support Alces utilities}
+  s.description = %Q{Base utility and tool classes to support Alces utilities}
   s.extra_rdoc_files = [
     'LICENSE',
     'README.rdoc',

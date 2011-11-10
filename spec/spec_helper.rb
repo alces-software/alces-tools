@@ -8,7 +8,7 @@ rescue Bundler::BundlerError => e
 end
 
 require 'rspec'
-require 'alces-gem-base'
+require 'alces-tools'
 
 # Requires supporting files with custom matchers and macros, etc,
 # in ./support/ and its subdirectories.
