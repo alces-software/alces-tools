@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.summary = %Q{Base utility and tool classes to support Alces utilities}
   s.description = %Q{Base utility and tool classes to support Alces utilities}
   s.extra_rdoc_files = [
-    'LICENSE',
+    'LICENSE.txt',
     'README.rdoc',
   ]
 
