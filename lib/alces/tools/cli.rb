@@ -139,7 +139,11 @@ module Alces
         opts.each do |name, descriptor|
           validators = descriptor[:validators]
           validators && validators.each do |v|
-            v.call(name,option_value(name))
+            unless v[:conditions].nil?
+              v[:proc].call(name,option_value(name)) if v[:conditions].call(self)
+            else
+              v[:proc].call(name,option_value(name))
+            end
           end
         end
       end

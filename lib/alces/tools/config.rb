@@ -53,7 +53,7 @@ module Alces
         
         #return the path of the file as if it was gem config
         def gem(name)
-          ::File::join(::File::dirname(__FILE__),"../config/#{name}")
+          ::File::join(::File::dirname(::File::expand_path($0)),"../config/#{name}")
         end
       end
     end

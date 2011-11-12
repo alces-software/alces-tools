@@ -30,7 +30,7 @@ module Alces
           raise InvalidOption, message(key, *args) unless condition.call
         end
         
-        def assert_not_empty(name, value)
+        def assert_not_empty(name, value, conditions=nil)
           assertion(-> { !value.to_s.empty? }, :not_present, name, value )
         end
         
@@ -42,10 +42,16 @@ module Alces
           assertion(-> { value =~ Regexp.new(regexp) }, :match_failed, name, value, regexp)
         end
 
+        def assert_included_in(name, value, array)
+          assertion(-> { array.include? value }, :not_valid, name, value, array)
+        end
+
         def message(key, *args)
           case key
           when :no_such_file
             "%s: File does not exist: %s" % args
+          when :not_valid
+            "%s: '%s' is not a valid selection" %args
           else
             "%s: '%s' is invalid" % args
           end

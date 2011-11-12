@@ -86,13 +86,17 @@ module Alces
         def validators_from(args)
           [].tap do |validators|
             if args[:required]
-              validators << lambda { |name, val| assert_not_empty(name, val) }
+              (args[:required][:value] rescue args[:required]) && validators << { proc: lambda { |name, val| assert_not_empty(name, val)}, 
+                                                                                  conditions: (args[:required][:conditions] rescue nil) }
             end
             if args[:file_exists]
-              validators << lambda { |name, val| assert_file_exists(name, val) }
+              validators << { proc: lambda { |name, val| assert_file_exists(name, val)}}
             end
             if args[:match]
-              validators << lambda { |name, val| assert_match(name, val, args[:match]) }
+              validators << { proc: lambda { |name, val| assert_match(name, val, args[:match]) } }
+            end
+            if args[:included_in]
+              validators << { proc: lambda { |name, val| assert_included_in(name, val, args[:included_in] ) } }
             end
           end
         end

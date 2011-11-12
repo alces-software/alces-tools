@@ -36,8 +36,9 @@ module Alces
           f.write(data)
         end
         chmod(opts[:mode],dest_filename) if opts[:mode]
+        File::exists? dest_filename
       end
-
+      
       def patch(dest_filename, patch_data)
         run("patch -p0 #{dest_filename}", stdin: patch_data)
       end
@@ -47,7 +48,7 @@ module Alces
         res[:exit_status].success?
       end
 
-      delegate :mkdir, :chmod, to: FileUtils
+      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, to: FileUtils
     end
   end
 end
