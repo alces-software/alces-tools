@@ -96,7 +96,7 @@ module Alces
               validators << { proc: lambda { |name, val| assert_match(name, val, args[:match]) } }
             end
             if args[:included_in]
-              validators << { proc: lambda { |name, val| assert_included_in(name, val, args[:included_in] ) } }
+              validators << { proc: lambda { |name, val| assert_included_in(name, val.to_s.upcase, args[:included_in].collect { |x| x.to_s.upcase } ) } }
             end
           end
         end
@@ -137,7 +137,7 @@ module Alces
             str=""
             str << "  #{optargs[0]}"
             if optargs.size > 3
-              str << " [#{optargs[3]}]"
+              str << " [#{optargs[3]}]" if optargs[3].kind_of? String
             end
             puts str
           end

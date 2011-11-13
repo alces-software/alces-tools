@@ -103,7 +103,12 @@ module Alces
 
       def set_defaults
         opts.each do |name,hsh|
-          instance_variable_set(:"@#{name}",(hsh[:optargs][3] rescue nil))
+          if hsh[:optargs][3].kind_of? Proc
+            default=hsh[:optargs][3].call(self)
+          else
+            default=hsh[:optargs][3] rescue nil
+          end
+          instance_variable_set(:"@#{name}",(default))
         end
       end
 

@@ -33,7 +33,7 @@ module Alces
 
           case cmd_args
           when String
-            cmd_args = cmd_args.split(' ')
+            cmd_args = [cmd_args]
           when Array
             # no op
           else
@@ -59,7 +59,7 @@ module Alces
 
         shell = opts[:shell]
         cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
-
+ 
         {}.tap do |ret|
           Open3.popen3(spawn_env,*cmd_args,spawn_opts) do |i,o,e,t|
             i.write(opts[:stdin]) if opts[:stdin]
@@ -70,6 +70,37 @@ module Alces
             ret[:exit_status] = t.value
           end
         end
+      end
+    end
+    module InteractiveExecution
+      include Execution
+      
+      VALID_MODES = [:BACKGROUND,:FOREGROUND]
+      
+      def run(*args)
+        opts= Execution.options_from(args)
+        mode=opts[:mode] ||= :BACKGROUND
+        opts[:text] && opts[:text] << " " || opts[:text]="Execution command "
+        
+        begin
+          if mode == :FOREGROUND
+            #TODO - no time to figure out how do this with popen3, do this properly at some point and preseve the args. 
+            cmd_args=Execution.cmd_args_from(args)
+            shell=opts[:shell]
+            cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
+            res={}.tap { |res|
+              res[:exit_status]=system(*cmd_args.join(" "))
+            }
+          else
+            print opts[:text]
+            res=super(*args)
+            res[:exit_status]=res[:exit_status].success?
+          end
+        rescue
+          res = {:exit_status=>false}
+        end
+        res[:exit_status] ? puts("[ \e[32mDONE\e[0m ]") : puts("[\e[31mFAILED\e[0m]")
+        res
       end
     end
   end
