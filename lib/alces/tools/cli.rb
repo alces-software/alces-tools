@@ -70,6 +70,7 @@ module Alces
       end
 
       def process
+        argc = ARGV.length
         getopts = GetoptLong.new(*as_getopts)
         begin
           set_defaults
@@ -92,11 +93,20 @@ module Alces
         rescue SystemExit
           nil
         rescue InvalidOption => e
-          STDERR.puts "ERROR: #{e.message}"
-          exit 1
+          if argc == 0
+            do_usage
+          else
+            STDERR.puts "ERROR: #{e.message}"
+            exit 1
+          end
         rescue Exception => e
           STDERR.puts "ERROR: #{e.message}"
-          STDERR.puts e.backtrace unless @verbose.to_s.empty?
+          unless @verbose.to_s.empty?
+            if e.respond_to?(:reason)
+              STDERR.puts "REASON: #{e.reason.to_s}"
+            end
+            STDERR.puts e.backtrace
+          end
           exit 1
         end
       end
