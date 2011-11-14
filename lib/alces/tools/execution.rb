@@ -23,6 +23,7 @@
 #                                                                              #
 ################################################################################
 require 'open3'
+require 'tempfile'
 require 'alces/tools/core_ext/object/blank'
 
 module Alces
@@ -135,7 +136,17 @@ module Alces
             puts("[ \e[32mDONE\e[0m ]")
           end
         end
-      end        
+      end  
+      
+      def with_temp_file(content,&block)
+        t = Tempfile.new('alces-temp')
+        t.write(content)
+        t.fsync
+        block.call(t.path)
+      ensure
+        t.close
+        t.unlink
+      end
     end
   end
 end
