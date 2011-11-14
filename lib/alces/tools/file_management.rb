@@ -48,7 +48,7 @@ module Alces
         res[:exit_status].success?
       end
 
-      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, to: FileUtils
+      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtils
     end
   end
 end
