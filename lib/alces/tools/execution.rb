@@ -23,21 +23,56 @@
 #                                                                              #
 ################################################################################
 require 'open3'
+require 'alces/tools/core_ext/object/blank'
 
 module Alces
   module Tools
     module Execution
+      class Result < Struct.new(:stdout, :stderr, :exit_status, :exc)
+        def [](k)
+          case k
+          when :stdout
+            stdout
+          when :stderr
+            stderr
+          when :exit_status
+            exit_status
+          else
+            nil
+          end
+        end
+
+        def failed!
+          @failed = true
+        end
+
+        def fail?
+          @failed || !exit_status.success?
+        end
+
+        def to_s
+          if exc.nil?
+            [].tap do |r|
+              r << "Output:\n => #{stdout.split("\n").join("\n => ")}" if stdout.present?
+              r << "Error:\n => #{stderr.split("\n").join("\n => ")}" if stderr.present?
+            end.join("\n")
+          else
+            "Exception: #{exc.class.name}: #{exc.message}\n => #{exc.backtrace.join("\n => ")}"
+          end
+        end
+      end
+
       class << self
         def cmd_args_from(args)
           cmd_args = args.length == 1 ? args.first : args
 
           case cmd_args
           when String
-            cmd_args = [cmd_args]
+            cmd_args = cmd_args.split(" ")
           when Array
-            # no op
+            cmd_args
           else
-            raise ArgumentError, "execute only understands String and Array arguments"
+            raise ArgumentError, "invalid argument provided; must be String or Array"
           end
         end
 
@@ -51,57 +86,56 @@ module Alces
         end
       end
 
+      def run_bash(*args)
+        opts = Execution.options_from(args)
+        raise ":shell option should not be specified when using run_bash" if opts.has_key?(:shell)
+        opts[:shell] = '/bin/bash'
+        run(*args, opts)
+      end
+
       def run(*args)
         opts = Execution.options_from(args)
         cmd_args = Execution.cmd_args_from(args)
+        interactive = opts.has_key?(:pty) && opts[:pty]
         spawn_opts = opts[:options] || {}
         spawn_env = opts[:env] || {}
 
         shell = opts[:shell]
         cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
- 
-        {}.tap do |ret|
-          Open3.popen3(spawn_env,*cmd_args,spawn_opts) do |i,o,e,t|
-            i.write(opts[:stdin]) if opts[:stdin]
-            i.close
-            
-            ret[:stdout] = o.read
-            ret[:stderr] = e.read
-            ret[:exit_status] = t.value
+
+        Result.new.tap do |r|
+          begin
+            if interactive
+              system(spawn_env, *cmd_args, spawn_opts)
+              r.exit_status = $?
+            else
+              Open3.popen3(spawn_env,*cmd_args,spawn_opts) do |i,o,e,t|
+                i.write(opts[:stdin]) if opts[:stdin]
+                i.close
+                
+                r.stdout = o.read
+                r.stderr = e.read
+                r.exit_status = t.value
+              end
+            end
+          rescue
+            r.failed!
+            r.exc = $!
           end
         end
       end
-    end
-    module InteractiveExecution
-      include Execution
-      
-      VALID_MODES = [:BACKGROUND,:FOREGROUND]
-      
-      def run(*args)
-        opts= Execution.options_from(args)
-        mode=opts[:mode] ||= :BACKGROUND
-        opts[:text] && opts[:text] << " " || opts[:text]="Execution command "
-        
-        begin
-          if mode == :FOREGROUND
-            #TODO - no time to figure out how do this with popen3, do this properly at some point and preseve the args. 
-            cmd_args=Execution.cmd_args_from(args)
-            shell=opts[:shell]
-            cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
-            res={}.tap { |res|
-              res[:exit_status]=system(*cmd_args.join(" "))
-            }
-          else
-            print opts[:text]
-            res=super(*args)
-            res[:exit_status]=res[:exit_status].success?
+
+      def statusly(message,fail_message = nil,&block)
+        print message, " "
+        block.call.tap do |r|
+          if r.fail?
+            puts("[\e[31mFAILED\e[0m]")
+            fail(fail_message, r) if fail_message
+          else 
+            puts("[ \e[32mDONE\e[0m ]")
           end
-        rescue
-          res = {:exit_status=>false}
         end
-        res[:exit_status] ? puts("[ \e[32mDONE\e[0m ]") : puts("[\e[31mFAILED\e[0m]")
-        res
-      end
+      end        
     end
   end
 end
