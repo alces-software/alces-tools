@@ -99,7 +99,7 @@ module Alces
         end
 
         module Full
-          FORMAT = "%s [%s] %s[%d-%08x]: %s"
+          FORMAT = "%s [%s] %s[%d-0x%014x]: %s"
 
           include Base
           extend self
@@ -148,8 +148,13 @@ module Alces
       attr_reader :auto_flushing
       attr_accessor :formatter
 
-      def initialize(log, level = DEBUG, formatter = nil)
-        @level         = level
+      def initialize(log, opts = {})
+        if opts.is_a?(Hash)
+          @level = opts[:level] || DEBUG
+        else
+          @level = opts
+          opts = {}
+        end
         @tmp_levels    = {}
         @buffer        = Hash.new { |h,k| h[k] = [] }
         @auto_flushing = 1
@@ -164,7 +169,8 @@ module Alces
           @log = open_log(log, (File::WRONLY | File::APPEND | File::CREAT))
         end
 
-        @formatter = formatter
+        @formatter = opts[:formatter]
+        @progname = opts[:progname]
       end
 
       def open_log(log, mode)
@@ -180,7 +186,13 @@ module Alces
 
       def add(severity, message = nil, progname = nil, &block)
         return if level > severity
-        message = (message || (block && block.call) || progname)
+        if message && block
+          message = render_message(message)
+          block_parts = render_message(block.call).split("\n",-1)
+          message << ?\n << render_sub_message(block_parts)
+        else
+          message = render_message(message || (block && block.call))
+        end
         message = format_message(severity, Time.now, progname, message)
 
         # If a newline is necessary then create a new message ending with a newline.
@@ -249,13 +261,24 @@ module Alces
     end
     
     def format_message(severity, datetime, progname, msg)
-      msg = render_message(msg)
       if formatter = (@formatter || self.class.default_formatter)
-        progname ||= $0
+        progname ||= @progname || $0
         formatter.call(format_severity(severity), datetime, progname, msg)
       else
         msg
       end
+    end
+
+    def render_sub_message(parts, klass = nil)
+      if klass
+        l = 68 - klass.name.length
+        l = 0 if l < 0
+        " \\----[ #{klass.name} ]#{'-' * l}/"
+      else
+        " \\#{'-' * 76}/"
+      end <<
+        ([nil] + parts || []).join("\n | ") <<
+        "\n /#{'-' * 76}\\"
     end
 
     def render_message(msg)
@@ -263,23 +286,18 @@ module Alces
       when ::String
         msg
       when ::Exception
-        l = 69 - msg.class.name.length
-        l = 0 if l < 0
-        "{Exception} #{msg.message}\n" <<
-          " \\----[ #{msg.class} ]#{'-' * l}/" <<
-          ([nil] + msg.backtrace || []).join("\n | ") <<
-          "\n /#{'-' * 77}\\"
+        "{Exception} #{msg.message}\n#{render_sub_message(msg.backtrace, msg.class)}"
       else
         if msg.respond_to?(:to_log)
           msg.to_log
         elsif msg.respond_to?(:inspect)
-          "{#{msg.class.name}} #{msg.inspect}"
+          "<#{msg.class.name}:#{'0x%014x' % msg.__id__}> #{msg.inspect}"
         else
-          "{#{msg.class.name}} #{msg.to_s}"
+          "<#{msg.class.name}:#{'0x%014x' % msg.__id__}> #{msg.to_s}"
         end
       end
     rescue
-      "{#{msg.class.name rescue 'class!'}}[#{msg.class.object_id rescue '__id__!'}] Unrenderable object!"
+      "<#{msg.class.name rescue 'class!'}:#{('0x%014x' % msg.class.object_id) rescue '__id__!'}> Unrenderable object!"
     end
 
     def auto_flush
