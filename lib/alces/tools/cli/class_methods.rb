@@ -79,7 +79,7 @@ module Alces
         
         def add_option(name,description,long_flag,short_flag=nil)
           opts[name.to_s.to_sym] = {
-            optargs: [description,long_flag,short_flag]
+            optargs: [description,long_flag,short_flag,false]
           }
         end
 
@@ -131,8 +131,8 @@ module Alces
             optargs = hsh[:optargs]
             puts
             str=""
-            str << "#{optargs[1]}, " unless optargs[2].nil?
-            str << "#{optargs[2]}:"
+            str << "#{optargs[1]}, " unless optargs[1].nil?
+            str << "#{optargs[2]}:" unless optargs[2].nil?
             puts str
             str=""
             str << "  #{optargs[0]}"
