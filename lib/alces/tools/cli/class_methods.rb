@@ -131,8 +131,13 @@ module Alces
             optargs = hsh[:optargs]
             puts
             str=""
-            str << "#{optargs[1]}, " unless optargs[2].nil?
-            str << "#{optargs[2]}:"
+            if optargs[1].nil? && optargs[2]
+              str << "#{optargs[2]}: "
+            elsif optargs[2].nil? && optargs[1]
+              str << "#{optargs[1]}: "
+            else
+              str << "#{optargs[1]}, #{optargs[2]}: "
+            end
             puts str
             str=""
             str << "  #{optargs[0]}"
