@@ -23,8 +23,8 @@
 #                                                                              #
 ################################################################################
 require 'alces/tools/core_ext/module/delegation'
+require 'alces/tools/fileutils_proxy'
 require 'alces/tools/execution'
-require 'fileutils'
 
 module Alces
   module Tools
@@ -48,7 +48,7 @@ module Alces
         res[:exit_status].success?
       end
 
-      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtils
+      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
     end
   end
 end
