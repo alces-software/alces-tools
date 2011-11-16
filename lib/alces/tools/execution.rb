@@ -126,6 +126,10 @@ module Alces
         end
       end
 
+      def fail(message, result = nil)
+        super(message)
+      end
+
       def statusly(message,fail_message = nil,&block)
         print message, " "
         block.call.tap do |r|
