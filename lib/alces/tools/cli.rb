@@ -23,7 +23,8 @@
 #                                                                              #
 ################################################################################
 require 'getoptlong'
-require 'alces/tools/config'
+require 'alces/tools/core_ext/module/delegation'
+require 'alces/tools/core_ext/object/blank'
 require 'alces/tools/cli/class_methods'
 
 module Alces
@@ -37,94 +38,57 @@ module Alces
         def included(mod)
           mod.instance_eval do
             extend ClassMethods
+            
+            flag :usage, 
+                 'Show usage',
+                 '--help', '-h'
 
-            add_option :usage, "Show usage", "--help", "-h"
-            add_option :verbose, "Be more verbose", "--verbose", "-v"
+            flag :verbose, 
+                 'Be more verbose',
+                 '--verbose', '-v'
+
             description "Description not set"
             name "Name not set"
+
+            delegate :config, :opts, :usage, :assert_preconditions!, to: self
           end
         end
-      end
 
-      def config
-        self.class.config
-      end
-
-      def opts
-        self.class.opts
-      end
-
-      def as_getopts
-        opts.map do |key,hsh|
-          optargs = hsh[:optargs]
-          [].tap do |opt|
-            opt << optargs[1] unless optargs[1].to_s.empty?
-            opt << optargs[2] unless optargs[2].to_s.empty?
-            if optargs.size > 3
-              opt << GetoptLong::REQUIRED_ARGUMENT
-            else
-              opt << GetoptLong::NO_ARGUMENT
+        def getopts_from(opts)
+          o = opts.map do |key,h|
+            [].tap do |opt|
+              opt.concat(h[:names])
+              opt << (h[:flag] ? GetoptLong::NO_ARGUMENT : GetoptLong::REQUIRED_ARGUMENT)
             end
           end
+          GetoptLong.new(*o)
         end
       end
 
       def process
-        self.class.assert_preconditions!
+        assert_preconditions!
         argc = ARGV.length
-        getopts = GetoptLong.new(*as_getopts)
-        begin
-          set_defaults
-          getopts.each do |option,arg|
-            matching_options = opts.select { |name,hsh| hsh[:optargs][1] == option }
-            matching_options.each do |x|
-              if respond_to? "do_#{x.first}"
-                if x.last.size > 3
-                  send("do_#{x.first}",arg || (x.last[3] rescue nil))
-                else
-                  send("do_#{x.first}")
-                end
-              else
-                instance_variable_set(:"@#{x.first}",arg) unless arg.nil?
-              end
-            end
-          end
-          validate_options
-          execute
-        rescue SystemExit
-          nil
-        rescue InvalidOption => e
-          if argc == 0
-            do_usage
-          else
-            STDERR.puts "ERROR: #{e.message}"
-            exit 1
-          end
-        rescue Exception => e
-          STDERR.puts "ERROR: #{e.message}"
-          unless @verbose.to_s.empty?
-            if e.respond_to?(:reason)
-              STDERR.puts "REASON: #{e.reason.to_s}"
-            end
-            STDERR.puts e.backtrace
-          end
-          exit 1
+        set_defaults
+        process_options
+        validate_options
+        execute
+      rescue SystemExit
+        nil
+      rescue InvalidOption => e
+        do_usage if argc == 0
+        STDERR.puts "ERROR: #{e.message}"
+        exit 1
+      rescue Exception => e
+        STDERR.puts "ERROR: #{e.message}"
+        if verbose?
+          STDERR.puts "REASON: #{e.reason.to_s}" if e.respond_to?(:reason)
+          STDERR.puts e.backtrace
         end
-      end
-
-      def set_defaults
-        opts.each do |name,hsh|
-          if hsh[:optargs][3].kind_of? Proc
-            default=hsh[:optargs][3].call(self)
-          else
-            default=hsh[:optargs][3] rescue nil
-          end
-          instance_variable_set(:"@#{name}",(default))
-        end
+        exit 1
       end
 
       def do_usage
-        self.class.usage
+        usage
         exit 0
       end
 
@@ -133,7 +97,7 @@ module Alces
       end
       
       def verbose?
-        !@verbose.to_s.empty?
+        @verbose.present?
       end
 
       def execute
@@ -151,6 +115,26 @@ module Alces
 
       private
 
+      def set_defaults
+        opts.each do |name,h|
+          d = h[:default]
+          self[name] = d.is_a?(Proc) ? d.call(self) : d
+        end
+      end
+
+      def process_options
+        CLI.getopts_from(opts).each do |option,arg|
+          name, h = opts.find { |k,v| v[:names].include?(option) }
+          doer = "do_#{name}"
+          if respond_to?(doer)
+            args = h[:flag] ? [] : [arg, self[name]].flatten
+            send(doer, *args)
+          else
+            self[name] = h[:flag] || arg
+          end
+        end
+      end
+
       def validate_options
         opts.each do |name, descriptor|
           validate_when = descriptor[:validate_when] || "validate_#{name}?".to_sym
@@ -159,10 +143,10 @@ module Alces
             validators && validators.each do |v|
               case v
               when Proc
-                v.call(name,option_value(name))
+                v.call(name,self[name])
               when Symbol
                 arity = method(v).arity
-                send(*[v,name,option_value(name)][0..arity])
+                send(*[v,name,self[name]][0..arity])
               else
                 raise "Validator must be a Proc or a Symbol"
               end
@@ -171,8 +155,12 @@ module Alces
         end
       end
 
-      def option_value(option_name)
-        instance_variable_get(:"@#{option_name}")
+      def [](name)
+        instance_variable_get(:"@#{name}")
+      end
+
+      def []=(name, val)
+        instance_variable_set(:"@#{name}", val)
       end
     end
   end
