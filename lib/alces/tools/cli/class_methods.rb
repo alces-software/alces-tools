@@ -116,7 +116,7 @@ module Alces
             optargs: optargs,
             validators: validators_from(args)
           }
-          descriptor[:validate_when] = args[:validate_when].to_sym if args.has_key(:validate_when)
+          descriptor[:validate_when] = args[:validate_when].to_sym if args.has_key?(:validate_when)
           opts[name.to_s.to_sym] = descriptor
         end
         
