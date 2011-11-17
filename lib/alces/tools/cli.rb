@@ -60,11 +60,11 @@ module Alces
           [].tap do |opt|
             opt << optargs[1] unless optargs[1].to_s.empty?
             opt << optargs[2] unless optargs[2].to_s.empty?
-            if optargs.size > 3
+            unless optargs.last.kind_of?(FalseClass) #default is false then its a no_argument switch
               opt << GetoptLong::REQUIRED_ARGUMENT
             else
               opt << GetoptLong::NO_ARGUMENT
-            end
+            end                                    
           end
         end
       end
@@ -78,14 +78,18 @@ module Alces
           getopts.each do |option,arg|
             matching_options = opts.select { |name,hsh| hsh[:optargs][1] == option }
             matching_options.each do |x|
-              if respond_to? "do_#{x.first}"
+              if respond_to? "do_#{x.first}" 
                 if x.last.size > 3
                   send("do_#{x.first}",arg || (x.last[3] rescue nil))
                 else
                   send("do_#{x.first}")
                 end
               else
-                instance_variable_set(:"@#{x.first}",arg) unless arg.nil?
+                if arg.to_s.empty? #no_argument switch
+                  instance_variable_set(:"@#{x.first}",true)
+                else
+                  instance_variable_set(:"@#{x.first}",arg)
+                end
               end
             end
           end

@@ -93,7 +93,26 @@ module Alces
         opts[:shell] = '/bin/bash'
         run(*args, opts)
       end
-
+      
+      def run_script(*args)
+        opts = Execution.options_from(args)
+        file=args.shift
+        extension = ::File::extname(file)
+        case extension
+          when '.sh','.bash'
+            cmd = '/usr/bin/env bash '
+          when '.pl','.perl'
+            cmd = '/usr/bin/env perl '
+          when '.rb','.ruby'
+            cmd = '/usr/bin/env ruby '
+          else
+            #assume executable
+            cmd = './ '
+        end
+        cmd << file
+        run(cmd,opts)
+      end
+      
       def run(*args)
         opts = Execution.options_from(args)
         cmd_args = Execution.cmd_args_from(args)

@@ -39,6 +39,10 @@ module Alces
         File::exists? dest_filename
       end
       
+      def read(src_filename)
+        return File::read(src_filename)
+      end
+      
       def patch(dest_filename, patch_data)
         run("patch -p0 #{dest_filename}", stdin: patch_data)
       end
