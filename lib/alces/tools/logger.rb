@@ -123,6 +123,20 @@ module Alces
         def silencer; @@silencer; end
         def default_formatter=(f); @@formatter = f; end
         def default_formatter; @@formatter; end
+        def formatter_for(f)
+          case f
+          when Formatter::Base
+            f
+          when :simple
+            Formatter::Simple
+          when :full
+            Formatter::Full
+          when NilClass
+            nil
+          else
+            raise "Unrecognised formatter: #{f}"
+          end
+        end
       end
       
       # Silences the logger for the duration of the block.
@@ -169,7 +183,7 @@ module Alces
           @log = open_log(log, (File::WRONLY | File::APPEND | File::CREAT))
         end
 
-        @formatter = opts[:formatter]
+        @formatter = self.class.formatter_for(opts[:formatter])
         @progname = opts[:progname]
       end
 
