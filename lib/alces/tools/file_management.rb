@@ -26,13 +26,22 @@ require 'alces/tools/core_ext/module/delegation'
 require 'alces/tools/core_ext/object/blank'
 require 'alces/tools/fileutils_proxy'
 require 'alces/tools/execution'
+require 'alces/tools/logging'
 
 module Alces
   module Tools
     module FileManagement
+      class << self
+        Alces::Tools::Logging.chain(:file_management)
+        include Alces::Tools::Logging::ClassMethods
+        def logger
+          Alces::Tools::Logging.file_management
+        end
+      end
       include Alces::Tools::Execution
 
       def write(filename, data, opts = {})
+        FileManagement.info("Writing file #{filename}")
         File.open(filename,'wb') do |f|
           f.write(data)
         end
@@ -52,19 +61,23 @@ module Alces
 
       def append(filename, suffix, opts = {})
         raise "Filename is blank" if filename.blank?
+        FileManagement.info("Appending to #{filename}")
         write_parts(filename, read(filename), suffix, opts)
       end
       
       def prepend(filename, prefix, opts = {})
         raise "Filename is blank" if filename.blank?
+        FileManagement.info("Prepending to #{filename}")
         write_parts(filename, prefix, read(filename), opts)
       end
       
-      def patch(dest_filename, patch_data)
-        run("patch -p0 #{dest_filename}", stdin: patch_data)
+      def patch(filename, patch_data)
+        FileManagement.info("Patching #{filename}")
+        run("patch -p0 #{filename}", stdin: patch_data)
       end
 
       def grep_q(filename, pattern)
+        FileManagement.info("Grepping #{filename} for #{pattern}")
         res = run("grep -q #{pattern} #{filename}")
         res[:exit_status].success?
       end
