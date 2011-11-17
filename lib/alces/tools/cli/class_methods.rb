@@ -39,7 +39,7 @@ module Alces
         end
       
         def get_config_filename
-          @__config_filename || "#{::File::basename(__FILE__)}.yml"
+          @__config_filename || "#{@name}.yml"
         end
       
         def config
@@ -89,7 +89,7 @@ module Alces
         
         def add_option(name,description,long_flag,short_flag=nil)
           opts[name.to_s.to_sym] = {
-            optargs: [description,long_flag,short_flag,false]
+            optargs: [description,long_flag,short_flag]
           }
         end
 
