@@ -41,21 +41,26 @@ module Alces
         end
         
         def method_missing(s, *a, &b)
-          if FileUtils.respond_to?(s)
-            begin
-              FileManagement.info("Performing FileUtils.#{s} with args #{a.inspect}")
-              FileUtils.send(s, *a, &b) && true
-            rescue
-              case @errors
-              when :log, :raise
-                FileManagement.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){$!}
-                raise $! if @errors == :raise
-              end
-              false
-            end
-          else
-            super
+          FileUtils.respond_to?(s) ? proxy(s, *a, &b) : super
+        end
+
+        private
+        def proxy(s, *a, &b)
+          begin
+            FileManagement.info("Performing FileUtils.#{s} with args #{a.inspect}")
+            FileUtils.send(s, *a, &b) && true
+          rescue
+            handle_error($!)
           end
+        end
+        
+        def handle_error(exc)
+          case @errors
+          when :log, :raise
+            FileManagement.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){exc}
+            raise exc if @errors == :raise
+          end
+          false
         end
       end
       raise_errors!
