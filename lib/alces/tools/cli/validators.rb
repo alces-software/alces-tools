@@ -30,7 +30,7 @@ module Alces
           raise InvalidOption, message(key, *args) unless condition.call
         end
         
-        def assert_not_empty(name, value, conditions=nil)
+        def assert_not_empty(name, value)
           assertion(-> { !value.to_s.empty? }, :not_present, name, value )
         end
         
@@ -43,7 +43,11 @@ module Alces
         end
 
         def assert_included_in(name, value, array)
-          assertion(-> { array.include? value }, :not_valid, name, value, array)
+          assertion(-> { array.include?(value) }, :not_valid, name, value, array)
+        end
+
+        def assert_condition(name, value, condition)
+          assertion(-> {condition.call(value) }, :not_valid, name, value)
         end
 
         def message(key, *args)
