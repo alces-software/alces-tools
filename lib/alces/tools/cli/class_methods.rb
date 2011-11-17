@@ -39,7 +39,7 @@ module Alces
         end
       
         def get_config_filename
-          @__config_filename || "#{::File::basename(__FILE__)}.yml"
+          @__config_filename || "#{@name}.yml"
         end
       
         def config
