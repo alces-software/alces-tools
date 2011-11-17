@@ -49,6 +49,7 @@ module Alces
 
             description "Description not set"
             name "Name not set"
+            log_to STDERR
 
             delegate :config, :opts, :usage, :assert_preconditions!, to: self
           end
