@@ -22,37 +22,43 @@
 # http://www.alces-software.org/symphony                                       #
 #                                                                              #
 ################################################################################
-require 'alces/tools/core_ext/module/delegation'
-require 'alces/tools/fileutils_proxy'
-require 'alces/tools/execution'
+require 'fileutils'
 
 module Alces
   module Tools
-    module FileManagement
-      include Alces::Tools::Execution
-
-      def write(dest_filename,data, opts = {})
-        File.open(dest_filename,'wb') do |f|
-          f.write(data)
+    module FileUtilsProxy
+      class << self
+        def log_errors!
+          @errors = :log
         end
-        chmod(opts[:mode],dest_filename) if opts[:mode]
-        File::exists? dest_filename
+        
+        def raise_errors!
+          @errors = :raise
+        end
+        
+        def silence_errors!
+          @errors = :silent
+        end
+        
+        def method_missing(s, *a, &b)
+          if FileUtils.respond_to?(s)
+            begin
+              FileUtils.send(s, *a, &b) && true
+            rescue
+              case @errors
+              when :log
+                Alces::Tools::Logging.default.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){$!}
+              when :raise
+                raise $!
+              end
+              false
+            end
+          else
+            super
+          end
+        end
       end
-      
-      def read(src_filename)
-        return File::read(src_filename)
-      end
-      
-      def patch(dest_filename, patch_data)
-        run("patch -p0 #{dest_filename}", stdin: patch_data)
-      end
-
-      def grep_q(filename, pattern)
-        res = run("grep -q #{pattern} #{filename}")
-        res[:exit_status].success?
-      end
-
-      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
+      raise_errors!
     end
   end
 end

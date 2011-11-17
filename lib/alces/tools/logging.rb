@@ -29,6 +29,24 @@ module Alces
   module Tools
     module Logging
       class << self
+        def loggers
+          @loggers ||= {
+            default: Alces::Tools::Logger.new(STDERR)
+          }
+        end
+
+        def []=(key, logger)
+          loggers[key] = logger
+        end
+
+        def [](key)
+          loggers[key] || raise("No such logger: #{key}")
+        end
+
+        def method_missing(s,*a,&b)
+          loggers.has_key?(s) ? loggers[s] : super
+        end
+
         def included(mod)
           mod.instance_eval do
             extend(ClassMethods)
@@ -61,6 +79,23 @@ module Alces
 
         def logger
           @logger ||= Alces::Tools::Logger.new(ClassMethods.logger_for(self))
+        end
+
+        def log_format(format)
+          formatter = case format
+                      when Symbol, String
+                        f = format.to_s[0..0].upcase + format.to_s[1..-1].downcase
+                        Alces::Tools::Logger::Formatter.const_get(f)
+                      when Proc
+                        format
+                      else
+                        if format.respond_to?(:call)
+                          format
+                        else
+                          raise 'Invalid log formatter - must respond to #call'
+                        end
+                      end
+          logger.formatter = formatter
         end
 
         Alces::Tools::Logger::Severity.constants.each do |s|
