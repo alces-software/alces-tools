@@ -23,6 +23,7 @@
 #                                                                              #
 ################################################################################
 require 'alces/tools/core_ext/module/delegation'
+require 'alces/tools/core_ext/object/blank'
 require 'alces/tools/fileutils_proxy'
 require 'alces/tools/execution'
 
@@ -31,16 +32,32 @@ module Alces
     module FileManagement
       include Alces::Tools::Execution
 
-      def write(dest_filename,data, opts = {})
-        File.open(dest_filename,'wb') do |f|
+      def write(filename, data, opts = {})
+        File.open(filename,'wb') do |f|
           f.write(data)
         end
-        chmod(opts[:mode],dest_filename) if opts[:mode]
-        File::exists? dest_filename
+        chmod(opts[:mode],filename) if opts[:mode]
+        File::exists?(filename)
+      end
+
+      def write_parts(filename, *parts)
+        opts = Alces::Tools::Execution.options_from(parts)
+        data = parts.shift
+        parts.each do |p|
+          data << ?\n unless data[-1] == ?\n
+          data << p
+        end
+        write(filename, data, opts)
+      end
+
+      def append(filename, suffix, opts = {})
+        raise "Filename is blank" if filename.blank?
+        write_parts(filename, read(filename), suffix, opts)
       end
       
-      def read(src_filename)
-        return File::read(src_filename)
+      def prepend(filename, prefix, opts = {})
+        raise "Filename is blank" if filename.blank?
+        write_parts(filename, prefix, read(filename), opts)
       end
       
       def patch(dest_filename, patch_data)
@@ -52,6 +69,7 @@ module Alces
         res[:exit_status].success?
       end
 
+      delegate :read, to: File
       delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
     end
   end
