@@ -87,7 +87,7 @@ module Alces
       module ClassMethods
         class << self
           def logger_for(mod)
-            mod.respond_to?(:log) ? mod.log : STDERR
+            mod.respond_to?(:log) ? mod.log : nil
           end
         end
 
@@ -96,7 +96,10 @@ module Alces
         end
 
         def logger
-          @logger ||= Alces::Tools::Logger.new(ClassMethods.logger_for(self))
+          @logger ||= begin
+                        log = ClassMethods.logger_for(self)
+                        log.nil? ? Logging.default : Alces::Tools::Logger.new(log)
+                      end
         end
 
         def log_format(format)

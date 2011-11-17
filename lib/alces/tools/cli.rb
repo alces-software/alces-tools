@@ -26,6 +26,7 @@ require 'getoptlong'
 require 'alces/tools/core_ext/module/delegation'
 require 'alces/tools/core_ext/object/blank'
 require 'alces/tools/cli/class_methods'
+require 'alces/tools/logging'
 
 module Alces
   module Tools
@@ -38,7 +39,8 @@ module Alces
         def included(mod)
           mod.instance_eval do
             extend ClassMethods
-            
+            include Alces::Tools::Logging
+
             flag :usage, 
                  'Show usage',
                  '--help', '-h'

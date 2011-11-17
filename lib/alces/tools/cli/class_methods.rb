@@ -72,8 +72,10 @@ module Alces
         end
 
         def log_to(log)
-          @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
-          Alces::Tools::Logging.default = @logger
+          preconditions << lambda do
+            @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
+            Alces::Tools::Logging.default = @logger
+          end
         end
         
         def opts
