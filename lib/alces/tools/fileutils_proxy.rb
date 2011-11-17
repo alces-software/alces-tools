@@ -43,13 +43,13 @@ module Alces
         def method_missing(s, *a, &b)
           if FileUtils.respond_to?(s)
             begin
+              FileManagement.info("Performing FileUtils.#{s} with args #{a.inspect}")
               FileUtils.send(s, *a, &b) && true
             rescue
               case @errors
-              when :log
-                Alces::Tools::Logging.default.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){$!}
-              when :raise
-                raise $!
+              when :log, :raise
+                FileManagement.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){$!}
+                raise $! if @errors == :raise
               end
               false
             end
