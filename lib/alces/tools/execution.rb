@@ -25,11 +25,20 @@
 require 'open3'
 require 'tempfile'
 require 'alces/tools/core_ext/object/blank'
+require 'alces/tools/logging'
 
 module Alces
   module Tools
     module Execution
-      class Result < Struct.new(:stdout, :stderr, :exit_status, :exc)
+      class << self
+        Alces::Tools::Logging.chain(:execution)
+        include Alces::Tools::Logging::ClassMethods
+        def logger
+          Alces::Tools::Logging.execution
+        end
+      end
+
+      class Result < Struct.new(:stdout, :stderr, :exit_status, :exc, :value)
         def [](k)
           case k
           when :stdout
@@ -51,15 +60,27 @@ module Alces
           @failed || !exit_status.success?
         end
 
+        def success?
+          !fail?
+        end
+
+        def outputs
+          [].tap do |r|
+            r << "Output:\n => #{stdout.split("\n").join("\n => ")}" if stdout.present?
+            r << "Error:\n => #{stderr.split("\n").join("\n => ")}" if stderr.present?
+          end.join("\n")
+        end
+
         def to_s
           if exc.nil?
-            [].tap do |r|
-              r << "Output:\n => #{stdout.split("\n").join("\n => ")}" if stdout.present?
-              r << "Error:\n => #{stderr.split("\n").join("\n => ")}" if stderr.present?
-            end.join("\n")
+            outputs
           else
             "Exception: #{exc.class.name}: #{exc.message}\n => #{exc.backtrace.join("\n => ")}"
           end
+        end
+
+        def to_log
+          to_s << "\nExited: " << exit_status.inspect
         end
       end
 
@@ -96,19 +117,20 @@ module Alces
       
       def run_script(*args)
         opts = Execution.options_from(args)
-        file=args.shift
-        extension = ::File::extname(file)
-        case extension
-          when '.sh','.bash'
-            cmd = '/usr/bin/env bash '
-          when '.pl','.perl'
-            cmd = '/usr/bin/env perl '
-          when '.rb','.ruby'
-            cmd = '/usr/bin/env ruby '
-          else
-            #assume executable
-            cmd = './ '
+        unless (script = args.shift).is_a?(String)
+          raise "run_script should only be used with a String parameter"
         end
+        cmd = case ::File::extname(script)
+              when '.sh','.bash'
+                '/usr/bin/env bash '
+              when '.pl','.perl'
+                '/usr/bin/env perl '
+              when '.rb','.ruby'
+                '/usr/bin/env ruby '
+              else
+                #assume directly executable
+                ''
+              end
         cmd << file
         run(cmd,opts)
       end
@@ -122,6 +144,10 @@ module Alces
 
         shell = opts[:shell]
         cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
+
+        Execution.info("Executing command") do
+          [cmd_args.inspect, opts].join(?\n)
+        end
 
         Result.new.tap do |r|
           begin
@@ -138,11 +164,19 @@ module Alces
                 r.exit_status = t.value
               end
             end
+            r.value = opts[:as].call(r) if opts.has_key?(:as)
           rescue
             r.failed!
             r.exc = $!
           end
+          Execution.debug("Command execution completed"){r}
         end
+      end
+
+      def value_or_fail(fail_message, &block)
+        block.call.tap do |r|
+          fail(fail_message, r) if r.fail?
+        end.value
       end
 
       def fail(message, result = nil)
