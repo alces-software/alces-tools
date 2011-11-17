@@ -81,16 +81,14 @@ module Alces
           @opts
         end
         
-        def add_option_with_argument(name,description,long_flag,short_flag=nil,default_value=nil)
-          opts[name.to_s.to_sym] = {
-            optargs: [description,long_flag,short_flag,default_value]
-          }
+        def add_option_with_argument(*args)
+          # XXX - deprecated
+          option(*args)
         end
         
-        def add_option(name,description,long_flag,short_flag=nil)
-          opts[name.to_s.to_sym] = {
-            optargs: [description,long_flag,short_flag]
-          }
+        def add_option(*args)
+          # XXX - deprecated
+          flag(*args)
         end
 
         def validators_from(args)
@@ -119,14 +117,36 @@ module Alces
           end
         end
 
-        def option(name, args)
-          optargs = [args[:description], args[:long], args[:short]]
-          optargs << args[:default] unless args[:flag]
+        class << self
+          def opts_from_args(args)
+            if args.length == 1
+              args.first
+            else
+              o = args.last.is_a?(Hash) ? args.pop : {}
+              {
+                description: args[0],
+                long: args[1],
+                short: args[2],
+                default: args[3]
+              }.merge(o)
+            end
+          end
+        end
+
+        def flag(name, *args)
+          option(name, ClassMethods.opts_from_args(args).merge(flag: true))
+        end
+
+        def option(name, *args)
+          o = ClassMethods.opts_from_args(args)
           descriptor = {
-            optargs: optargs,
-            validators: validators_from(args)
+            description: o[:description],
+            names: [o[:long], o[:short]].compact,
+            flag: o[:flag],
+            default: o[:default],
+            validators: validators_from(o)
           }
-          descriptor[:validate_when] = args[:validate_when].to_sym if args.has_key?(:validate_when)
+          descriptor[:validate_when] = o[:validate_when].to_sym if o.has_key?(:validate_when)
           opts[name.to_s.to_sym] = descriptor
         end
         
@@ -139,33 +159,25 @@ module Alces
         end
 
         def usage
-          puts "Synopsis"
-          puts
-          puts "#{@name}: #{@description}"
-          puts
-          puts "Usage"
-          puts
-          puts "#{@name} [OPTION]"
-          opts.each do |opt,hsh|
-            optargs = hsh[:optargs]
-            puts
-            str=""
-            if optargs[1].nil? && optargs[2]
-              str << "#{optargs[2]}: "
-            elsif optargs[2].nil? && optargs[1]
-              str << "#{optargs[1]}: "
-            else
-              str << "#{optargs[1]}, #{optargs[2]}: "
+          usage_text = <<EOF
+Synopsis
+
+#{@name}: #{@description}
+
+Usage
+
+#{@name} [OPTION]
+EOF
+          usage_text << opts.map do |opt,h|
+            ?\n.tap do |s|
+              s << "#{h[:names].join(", ")}:\n"
+              s << "  #{h[:description]}"
+              if (d = h[:default])
+                s << " [#{d}]" if d.is_a?(String)
+              end
             end
-            puts str
-            str=""
-            str << "  #{optargs[0]}"
-            if optargs.size > 3
-              str << " [#{optargs[3]}]" if optargs[3].kind_of? String
-            end
-            puts str
-          end
-          puts
+          end.join("\n")
+          puts usage_text
         end
       end
     end
