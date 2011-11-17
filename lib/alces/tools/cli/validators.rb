@@ -43,7 +43,7 @@ module Alces
         end
 
         def assert_included_in(name, value, array)
-          assertion(-> { array.include?(value) }, :not_valid, name, value, array)
+          assertion(-> { array.include?(value) }, :not_included, name, value, array)
         end
 
         def assert_condition(name, value, condition)
@@ -52,12 +52,14 @@ module Alces
 
         def message(key, *args)
           case key
+          when :not_present
+            "A value is required for '%s'" % args
           when :no_such_file
-            "%s: File does not exist: %s" % args
-          when :not_valid
-            "%s: '%s' is not a valid selection" %args
+            "%s: File does not exist: '%s'" % args
+          when :not_included
+            "%s: '%s' is not a valid selection" % args
           else
-            "%s: '%s' is invalid" % args
+            "%s: The value '%s' is invalid" % args
           end
         end
       end
