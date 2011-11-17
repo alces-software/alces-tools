@@ -47,7 +47,7 @@ module Alces
         end
 
         def assert_condition(name, value, condition)
-          assertion(-> {condition.call(value) }, :not_valid, name, value, result)
+          assertion(-> {condition.call(value) }, :not_valid, name, value)
         end
 
         def message(key, *args)
