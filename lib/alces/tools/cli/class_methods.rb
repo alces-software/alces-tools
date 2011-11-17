@@ -86,17 +86,25 @@ module Alces
         def validators_from(args)
           [].tap do |validators|
             if args[:required]
-              (args[:required][:value] rescue args[:required]) && validators << { proc: lambda { |name, val| assert_not_empty(name, val)}, 
-                                                                                  conditions: (args[:required][:conditions] rescue nil) }
+              validators << lambda { |name, val| assert_not_empty(name, val) }
             end
             if args[:file_exists]
-              validators << { proc: lambda { |name, val| assert_file_exists(name, val)}}
+              validators << lambda { |name, val| assert_file_exists(name, val) }
             end
             if args[:match]
-              validators << { proc: lambda { |name, val| assert_match(name, val, args[:match]) } }
+              validators << lambda { |name, val| assert_match(name, val, args[:match]) }
             end
             if args[:included_in]
-              validators << { proc: lambda { |name, val| assert_included_in(name, val.to_s.upcase, args[:included_in].collect { |x| x.to_s.upcase } ) } }
+              validators << lambda do |name, val| 
+                includer = args[:included_in].map {|e| e.to_s.upcase}
+                assert_included_in(name, val.to_s.upcase, includer)
+              end
+            end
+            if args[:condition]
+              validators << lambda { |name, val| assert_condition(name, val, args[:condition]) }
+            end
+            if args[:method]
+              validators << args[:method].to_sym
             end
           end
         end
@@ -108,6 +116,7 @@ module Alces
             optargs: optargs,
             validators: validators_from(args)
           }
+          descriptor[:validate_when] = args[:validate_when].to_sym if args.has_key(:validate_when)
           opts[name.to_s.to_sym] = descriptor
         end
         

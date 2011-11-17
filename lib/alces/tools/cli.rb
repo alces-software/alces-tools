@@ -152,12 +152,18 @@ module Alces
 
       def validate_options
         opts.each do |name, descriptor|
-          validators = descriptor[:validators]
-          validators && validators.each do |v|
-            unless v[:conditions].nil?
-              v[:proc].call(name,option_value(name)) if v[:conditions].call(self)
-            else
-              v[:proc].call(name,option_value(name))
+          validate_when = descriptor[:validate_when] || "validate_#{name}?".to_sym
+          if !respond_to?(validate_when) || send(validate_when)
+            validators = descriptor[:validators]
+            validators && validators.each do |v|
+              case v
+              when Proc
+                v.call(name,option_value(name))
+              when Symbol
+                send(v, name, option_value(name))
+              else
+                raise "Validator must be a Proc or a Symbol"
+              end
             end
           end
         end
