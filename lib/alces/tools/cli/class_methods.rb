@@ -55,8 +55,10 @@ module Alces
 
         def root_only
           if ENV['USER'] != 'root'
-            STDERR.puts "Must be run as superuser"
-            exit 1
+            unless ENV['NOROOTONLY']
+              STDERR.puts "Must be run as superuser"
+              exit 1
+            end
           end
         end
         
