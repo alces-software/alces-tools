@@ -160,7 +160,8 @@ module Alces
               when Proc
                 v.call(name,option_value(name))
               when Symbol
-                send(v, name, option_value(name))
+                arity = method(v).arity
+                send(*[v,name,option_value(name)][0..arity])
               else
                 raise "Validator must be a Proc or a Symbol"
               end
