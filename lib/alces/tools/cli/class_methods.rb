@@ -23,6 +23,7 @@
 #                                                                              #
 ################################################################################
 require 'alces/tools/cli/validators'
+require 'alces/tools/logging'
 
 module Alces
   module Tools
@@ -68,6 +69,11 @@ module Alces
               exit 1
             end
           end
+        end
+
+        def log_to(log)
+          @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
+          Alces::Tools::Logging.default = @logger
         end
         
         def opts
