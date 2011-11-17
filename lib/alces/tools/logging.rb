@@ -43,14 +43,32 @@ module Alces
           loggers[key] || raise("No such logger: #{key}")
         end
 
+        def chain(source, dest = :default)
+          loggers[source] = dest
+        end
+
         def method_missing(s,*a,&b)
-          loggers.has_key?(s) ? loggers[s] : super
+          if s.to_s[-1] == ?=
+            loggers[s.to_s[0..-2].to_sym] = a.first
+          else
+            loggers.has_key?(s) ? resolve(s) : super
+          end
         end
 
         def included(mod)
           mod.instance_eval do
             extend(ClassMethods)
             include(InstanceMethods)
+          end
+        end
+
+        private
+        def resolve(k)
+          case l = loggers[k]
+          when Logger
+            l
+          when Symbol
+            resolve(l)
           end
         end
       end
