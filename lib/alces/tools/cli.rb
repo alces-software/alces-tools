@@ -70,6 +70,7 @@ module Alces
       end
 
       def process
+        self.class.assert_preconditions!
         argc = ARGV.length
         getopts = GetoptLong.new(*as_getopts)
         begin

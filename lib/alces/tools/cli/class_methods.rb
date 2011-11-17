@@ -53,10 +53,20 @@ module Alces
           end
         end
 
+        def preconditions
+          @preconditions ||= []
+        end
+
+        def assert_preconditions!
+          preconditions.each(&:call)
+        end
+
         def root_only
-          if ENV['USER'] != 'root'
-            STDERR.puts "Must be run as superuser"
-            exit 1
+          preconditions << lambda do
+            if ENV['USER'] != 'root'
+              STDERR.puts "Must be run as superuser"
+              exit 1
+            end
           end
         end
         
