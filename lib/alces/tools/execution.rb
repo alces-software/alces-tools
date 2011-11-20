@@ -131,7 +131,7 @@ module Alces
                 #assume directly executable
                 ''
               end
-        cmd << file
+        cmd << script
         run(cmd,opts)
       end
       

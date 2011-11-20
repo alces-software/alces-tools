@@ -50,11 +50,11 @@ module Alces
             FileManagement.info("Performing FileUtils.#{s} with args #{a.inspect}")
             FileUtils.send(s, *a, &b) && true
           rescue
-            handle_error($!)
+            handle_error($!,s,*a)
           end
         end
         
-        def handle_error(exc)
+        def handle_error(exc,s,*a)
           case @errors
           when :log, :raise
             FileManagement.warn("Failed: FileUtils.#{s} with args #{a.inspect}"){exc}
