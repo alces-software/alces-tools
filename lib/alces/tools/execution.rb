@@ -164,7 +164,7 @@ module Alces
                 r.exit_status = t.value
               end
             end
-            r.value = opts[:as].call(r) if opts.has_key?(:as)
+            r.value = as_value(opts[:as],r) if opts.has_key?(:as)
           rescue
             r.failed!
             r.exc = $!
@@ -173,9 +173,29 @@ module Alces
         end
       end
 
-      def value_or_fail(fail_message, &block)
+      def as_value(as, r)
+        case as
+        when Symbol
+          if r.respond_to?(as)
+            r.send(as)
+          elsif respond_to?(as)
+            send(as, r)
+          end
+        when Proc
+          opts[:as].call(r)
+        else
+          raise "Value parsers must be a Symbol or a Proc"
+        end
+      end
+
+      def value_or_fail(fail_message, opts = {}, &block)
         block.call.tap do |r|
-          fail(fail_message, r) if r.fail?
+          if opts[:ignore_status]
+            # only fail if there's been an exception
+            fail(fail_message, r) if r.exc
+          else
+            fail(fail_message, r) if r.fail?
+          end
         end.value
       end
 
