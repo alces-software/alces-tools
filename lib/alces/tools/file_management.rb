@@ -83,7 +83,7 @@ module Alces
       end
 
       delegate :read, to: File
-      delegate :mkdir, :mkdir_p, :chmod, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
+      delegate :mkdir, :mkdir_p, :chmod, :chown, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
     end
   end
 end
