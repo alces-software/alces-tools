@@ -166,25 +166,32 @@ module Alces
           @name=string
         end
 
-        def usage
-          usage_text = <<EOF
+        def cli_usage
+          '[OPTIONS]'
+        end
+
+        def usage_text
+          t = <<EOF
 Synopsis
 
 #{@name}: #{@description}
 
 Usage
 
-#{@name} [OPTION]
+#{@name} #{cli_usage}
 EOF
-          usage_text << opts.map do |opt,h|
+          t << opts.map do |opt,h|
             ?\n.tap do |s|
-              s << "#{h[:names].join(", ")}:\n"
-              s << "  #{h[:description]}"
+              s << "  #{h[:names].join(", ")}:\n"
+              s << "    #{h[:description]}"
               if (d = h[:default])
                 s << " [#{d}]" if d.is_a?(String)
               end
             end
           end.join("\n")
+        end
+
+        def usage
           puts usage_text
         end
       end
