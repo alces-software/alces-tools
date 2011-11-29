@@ -25,12 +25,27 @@
 module Alces
   module Tools
     module Config
+      DEFAULT_CONFIG_PATH = '/etc/alces:/opt/alces/etc:/etc/opt/alces:/opt/gridware/etc/opt/alces'
+
       LOCAL_CONFIG_BASE=::File::join('/etc/opt/alces/')
       SHARED_CONFIG_BASE=::File::join('/opt/gridware/etc/opt/alces/')
       
       class << self
+        def config_paths
+          @paths ||= (ENV['ALCES_CONFIG_PATH'] || DEFAULT_CONFIG_PATH).split(?:)
+        end
+
+        def find(name, fallback = true)
+          cfg_file = name[-4..-1] == '.yml' ? name : "#{name}.yml"
+          config_paths.each do |path|
+            config_file = ::File.join(path,cfg_file)
+            return config_file if ::File.exists?(config_file)
+          end
+          fallback_find(cfg_file) if fallback
+        end
+
         #Find a config file using the 3 Alces locations in sequence -> LOCAL, SHARED, GEM
-        def find(name)
+        def fallback_find(name)
           configfile = local(name)
           unless ::File::exists?(configfile)
             configfile = shared(name)
