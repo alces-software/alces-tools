@@ -180,9 +180,11 @@ module Alces
             r.send(as)
           elsif respond_to?(as)
             send(as, r)
+          else
+            raise "Value parser '#{as}' could not be found"
           end
         when Proc
-          opts[:as].call(r)
+          as.call(r)
         else
           raise "Value parsers must be a Symbol or a Proc"
         end
