@@ -40,3 +40,25 @@ Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
+
+module Alces
+  class Tasks < ::Rake::TaskLib
+    def initialize
+      yield self if block_given?
+      define
+    end
+      
+    def define
+      namespace :alces do
+        task :release do
+          sh 'gem inabox'
+        end
+      end
+      
+      Rake.application.instance_variable_get('@tasks').delete('release')
+      desc "Release to the Alces Geminabox repo."
+      task :release => 'alces:release'
+    end
+  end
+end
+Alces::Tasks.new
