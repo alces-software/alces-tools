@@ -52,6 +52,10 @@ module Alces
         raise(NotImplementedError, "Includers must implement #ssl returning an SSLConfigurator::Configuration object")
       end
 
+      def ssl?
+        !ssl.nil?
+      end
+
       def ssl_cert
         cert_file = ssl_path_to_file(ssl.certificate)
         OpenSSL::X509::Certificate.new(File.read(cert_file))
@@ -92,20 +96,21 @@ module Alces
           # http://www.braintreepayments.com/devblog/sslsocket-verify_mode-doesnt-verify
           # http://redmine.ruby-lang.org/issues/3150
           # mjt - possibly only an issue while developing on OSX, but an issue nonetheless :-/
+          # XXX - VERIFY PEER CERTIFICATE A BIT MORE?
           :SSLVerifyCallback => lambda { |preverify_ok, ssl_context| ssl_verify_certificate(preverify_ok, ssl_context) }
         }
       end
 
       # create an SSL configuration suitable for starting up a DRb service (server side)
       def ssl_drb_config
-        return if ssl.nil?
+        return unless ssl?
         ::DRb.config.dup.
           merge!(ssl_config)
       end
 
       # affect DRb environment with this SSL configuration (client side)
       def ssl_drb_config!
-        return if ssl.nil?
+        return unless ssl?
         require 'drb/ssl'
         # XXX - the following doesn't work :-/
         ::DRb.config.merge!(ssl_config)
@@ -114,10 +119,14 @@ module Alces
       end
 
       def ssl_context
-        cfg = ssl_config[cfg_key]
-        OpenSSL::SSL::SSLContext.new.tap do |ctx|
+        @ssl_context ||= ssl_context!
+      end
+
+      def ssl_context!
+        cfg = ssl_config
+        @ssl_context = OpenSSL::SSL::SSLContext.new.tap do |ctx|
           SSL_CONTEXT_MAP.each do |msg, cfg_key|
-            ctx.send(msg, cfg)
+            ctx.send(msg, cfg[cfg_key])
           end
         end
       end
@@ -129,6 +138,10 @@ module Alces
           # XXX - VERIFY PEER CERTIFICATE A BIT MORE?
           # STDERR.puts sock.peer_cert.to_s
         end
+      end
+
+      def ssl_server(server)
+        OpenSSL::SSL::SSLServer.new(server, ssl_context)
       end
 
       def ssl_path_to_file(f)
