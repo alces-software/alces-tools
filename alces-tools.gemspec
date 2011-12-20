@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.name = 'alces-tools'
   s.version = Alces::Tools::VERSION
   s.platform = Gem::Platform::RUBY
-  s.date = "2011-12-13"
+  s.date = "2011-12-20"
   s.authors = ['Stephen F. Norledge', 'Mark J. Titorenko']
   s.email = 'mark.titorenko@alces-software.com'
   s.homepage = 'http://github.com/alces-software/alces-tools'
