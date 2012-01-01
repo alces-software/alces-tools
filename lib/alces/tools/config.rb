@@ -25,7 +25,7 @@
 module Alces
   module Tools
     module Config
-      DEFAULT_CONFIG_PATH = '/etc/alces:/opt/alces/etc:/etc/opt/alces:/opt/gridware/etc/opt/alces'
+      DEFAULT_CONFIG_PATH = '/etc/alces:/etc/opt/alces/:/opt/alces/etc:/opt/gridware/etc/opt/alces'
 
       LOCAL_CONFIG_BASE=::File::join('/etc/opt/alces/')
       SHARED_CONFIG_BASE=::File::join('/opt/gridware/etc/opt/alces/')
