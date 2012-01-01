@@ -184,6 +184,7 @@ module Alces
         end
 
         @formatter = self.class.formatter_for(opts[:formatter])
+        @cleaner = opts[:cleaner]
         @progname = opts[:progname]
       end
 
@@ -295,12 +296,16 @@ module Alces
         "\n /#{'-' * 76}\\"
     end
 
+    def clean(backtrace)
+      @cleaner.nil? ? backtrace : @cleaner.clean(backtrace)
+    end
+
     def render_message(msg)
       case msg
       when ::String
         msg
       when ::Exception
-        "{Exception} #{msg.message}\n#{render_sub_message(msg.backtrace, msg.class)}"
+        "{Exception} #{msg.message}\n#{render_sub_message(clean(msg.backtrace), msg.class)}"
       else
         if msg.respond_to?(:to_log)
           msg.to_log
