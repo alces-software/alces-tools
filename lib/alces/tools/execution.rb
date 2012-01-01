@@ -79,6 +79,16 @@ module Alces
           end
         end
 
+        def to_hash
+          {
+            stdout: stdout,
+            stderr: stderr,
+            exit_status: exit_status,
+            exc: exc,
+            value: value
+          }
+        end
+
         def to_log
           to_s << "\nExited: " << exit_status.inspect
         end
