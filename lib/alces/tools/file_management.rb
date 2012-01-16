@@ -27,6 +27,7 @@ require 'alces/tools/core_ext/object/blank'
 require 'alces/tools/fileutils_proxy'
 require 'alces/tools/execution'
 require 'alces/tools/logging'
+require 'digest/md5'
 
 module Alces
   module Tools
@@ -37,8 +38,33 @@ module Alces
         def logger
           Alces::Tools::Logging.file_management
         end
+
+        def metadata_filename(filename, metadata_dir, ext)
+          File.expand_path(File.join([File.dirname(filename),
+                                      metadata_dir,
+                                      "#{File.basename(filename)}.#{ext}"].compact))
+        end
+
+        def match?(filename, metadata_dir, ext)
+          md5_fn = metadata_filename(filename, metadata_dir, ext)
+          if !File.exists?(md5_fn)
+            true
+          else
+            md5 = Digest::MD5.hexdigest(File.read(filename))
+            # check current md5 against stored version
+            original_md5 = File.read(md5_fn).chomp
+            FileManagement.debug "MD5 check - original: #{original_md5}; current: #{md5}"
+            md5 == original_md5
+          end
+        end
       end
+
       include Alces::Tools::Execution
+ 
+      delegate :read, to: File
+      delegate :mkdir, :mkdir_p, :chmod, :chown, :rm, :rm_r, :rm_rf, :rm_f,
+               :ln, :ln_s, :ln_sf, :touch, 
+               to: FileUtilsProxy
 
       def write(filename, data, opts = {})
         FileManagement.info("Writing file #{filename}")
@@ -82,8 +108,51 @@ module Alces
         res[:exit_status].success?
       end
 
-      delegate :read, to: File
-      delegate :mkdir, :mkdir_p, :chmod, :chown, :rm, :rm_r, :rm_rf, :rm_f, :ln, :ln_s, :ln_sf, :touch, to: FileUtilsProxy
+      def backup(filename, ext='alcesbackup', metadata_dir='.alces')
+        raise "Filename is blank" if filename.blank?
+        if File.exists?(filename)
+          bfn = FileManagement.metadata_filename(filename, metadata_dir, ext)
+          FileManagement.info("Backing up #{filename} to #{bfn}")
+          mkdir_p(File::dirname(bfn)) rescue nil
+          run("cp -pavf #{filename} #{bfn}").success?
+        else
+          true
+        end
+      end
+
+      def restore(filename, ext='alcesbackup', metadata_dir='.alces')
+        raise "Filename is blank" if filename.blank?
+        bfn = FileManagement.metadata_filename(filename, metadata_dir, ext)
+        FileManagement.info("Restoring #{filename} from backup (#{bfn})")
+        if File.exists?(bfn)
+          rm(filename) rescue nil
+          run("cp -pavf #{bfn} #{filename}").success?
+        else
+          false
+        end
+      end
+
+      def if_unchanged(filename, force=false, *args, &block)
+        if verify_md5(filename, force, *args)
+          block.call(filename, File.exists?(filename))
+          write_md5(filename, *args)
+        else
+          false
+        end
+      end
+
+      def verify_md5(filename, force=false, ext='md5sum', metadata_dir='.alces')
+        raise "Filename is blank" if filename.blank?
+        FileManagement.info "Performing MD5 verification for #{filename}"
+        force || !File.exists?(filename) || 
+          FileManagement.match?(filename, metadata_dir, ext)
+      end
+
+      def write_md5(filename, metadata_dir='.alces', ext='md5sum')
+        md5_fn = FileManagement.metadata_filename(filename, metadata_dir, ext)
+        mkdir_p(File.dirname(md5_fn))
+        write(md5_fn, Digest::MD5.hexdigest(read(filename)))
+      end
     end
   end
 end
