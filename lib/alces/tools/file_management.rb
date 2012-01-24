@@ -64,6 +64,7 @@ module Alces
       delegate :read, to: File
       delegate :mkdir, :mkdir_p, :chmod, :chown, :rm, :rm_r, :rm_rf, :rm_f,
                :ln, :ln_s, :ln_sf, :touch, 
+               :cp, :cp_r,
                to: FileUtilsProxy
 
       def write(filename, data, opts = {})
