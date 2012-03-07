@@ -33,6 +33,7 @@ module Alces
     module CLI
       class InvalidCommand < StandardError; end
       class InvalidOption < StandardError; end
+      class BadOutcome < StandardError; end
       class ConfigFileException < StandardError; end
 
       class << self
@@ -71,12 +72,14 @@ module Alces
       def process
         assert_preconditions!
         argc = ARGV.length
-        set_defaults
         process_options
+        set_defaults
         validate_options
         execute
       rescue SystemExit
         nil
+      rescue BadOutcome
+        exit 1
       rescue InvalidOption => e
         do_usage if argc == 0
         STDERR.puts "ERROR: #{e.message}"
@@ -121,7 +124,9 @@ module Alces
       def set_defaults
         opts.each do |name,h|
           d = h[:default]
-          self[name] = d.is_a?(Proc) ? d.call(self) : d
+          if self[name].nil?
+            self[name] = d.is_a?(Proc) ? d.call(self) : d
+          end
         end
       end
 
