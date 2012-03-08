@@ -169,8 +169,15 @@ module Alces
                 i.write(opts[:stdin]) if opts[:stdin]
                 i.close
                 
-                r.stdout = o.read
-                r.stderr = e.read
+                # thread reading of stderr alongside reading of
+                # stdout as both streams may need to be fully read
+                # before they are closed by the process (I'm looking
+                # at you wget.)
+                Thread.new { r.stderr = opts[:nonblock] ? nonblock_reader(e) : e.read }.tap do |thr|
+                  r.stdout = opts[:nonblock] ? nonblock_reader(o) : o.read
+                  thr.join
+                end
+
                 r.exit_status = t.value
               end
             end
@@ -180,6 +187,21 @@ module Alces
             r.exc = $!
           end
           Execution.debug("Command execution completed"){r}
+        end
+      end
+
+      def nonblock_reader(s)
+        ''.tap do |str|
+          loop do
+            begin
+              str << s.read_nonblock(2**8).to_s
+            rescue IO::WaitReadable
+              IO.select([s])
+              retry
+            rescue EOFError
+              break
+            end
+          end
         end
       end
 
