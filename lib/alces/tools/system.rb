@@ -23,71 +23,166 @@
 #                                                                              #
 ################################################################################
 require 'alces/tools/execution'
+require 'alces/tools/core_ext/module/delegation'
 
 module Alces
   module Tools
     module System
       include Alces::Tools::Execution
-      include Alces::Tools::Logging
+      extend self
+
+      class Distribution < Struct.new(:title, :abbreviation, :major, :minor)
+        class << UNKNOWN = Distribution.new('OTHER','OTHER',0,0)
+          def to_s; 'OTHER'; end
+          def unknown?
+            true
+          end
+        end
+          
+        class << self
+          def debian(major, minor=0)
+            new('DEBIAN', 'DEBIAN', major, minor)
+          end
+          def sl(major, minor=0)
+            new('SCIENTIFIC_LINUX', 'SL', major, minor)
+          end
+          def centos(major, minor=0)
+            new('CENTOS', 'CENTOS', major, minor)
+          end
+          def rhel(major, minor=0)
+            new('REDHAT', 'RH', major, minor)
+          end
+          def sles(major, minor=0)
+            new('SLES', 'SLES', major, minor)
+          end
+
+          def for(str)
+            name, major, minor = str.upcase.match(/^([A-Z]+)(\d+)[._-](\d+)/).to_a[1..-1]
+            raise ArgumentError, "Could not parse '#{str}' to distro" if name.nil? || major.nil? || minor.nil?
+            case name
+            when 'DEBIAN'
+              debian(major, minor)
+            when 'SL', 'SCIENTIFIC'
+              sl(major, minor)
+            when /^CENT(OS)?$/
+              centos(major, minor)
+            when /^RH(EL)?$/, 'REDHAT'
+              rhel(major, minor)
+            when 'SLES'
+              sles(major, minor)
+            else
+              new(name, name, major, minor)
+            end
+          end
+        end
+
+        def short_name
+          format('%s%V')
+        end
+
+        def full_name
+          format('%f_%v')
+        end
+
+        def pretty_name
+          format('%F %V')
+        end
+
+        def version
+          "#{major}.#{minor}"
+        end
+
+        def format(format)
+          s = format.dup
+          s.gsub!('%f',title)
+          s.gsub!('%F',pretty_title)
+          s.gsub!('%s',abbreviation)
+          s.gsub!('%v',"#{major}-#{minor}")
+          s.gsub!('%V',version)
+        end
+        
+        def to_s
+          full_name
+        end
+
+        def suse?
+          abbreviation_in?('SLES','OPENSUSE')
+        end
+
+        def redhat?
+          abbreviation_in?('RH','SL','CENTOS')
+        end
+
+        def debian?
+          abbreviation_in?('DEBIAN')
+        end
+
+        def unknown?
+          false
+        end
+
+        private
+        def pretty_title
+          title.gsub('_',' ').downcase.gsub(/\b([a-z])(\w+)\b/){|s|"#{$1.upcase}#{$2.downcase}"}
+        end
+
+        def abbreviation_in?(*args)
+          args.include?(abbreviation)
+        end
+      end
 
       OPERATING_SYSTEM_IDENTIFICATION_FILE='/etc/issue'
       OPERATING_SYSTEM_IDENTIFICATION_STRINGS={
-        "\nThis is \\n.\\O (\\s \\m \\r) \\t\n\n"=>'DEBIAN_4-0',
-        "Ubuntu 7.10 \\n \\l\n\n"=>'DEBIAN_4-0',
-        "Debian GNU/Linux 4.0 \\n \\l\n\n"=>'DEBIAN_4-0',
-        "Debian GNU/Linux 5.0 \\n \\l\n\n"=>'DEBIAN_5-0',
-        "Scientific Linux SL release 5.2 (Boron)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_5-2",
-        "CentOS release 5.2 (Final)\nKernel \\r on an \\m\n\n" => "CENTOS_5-2",
-	      "CentOS release 5.3 (Final)\nKernel \\r on an \\m\n\n" => "CENTOS_5-3",
-	      "CentOS release 5.6 (Final)\nKernel \\r on an \\m\n\n" => "CENTOS_5-6",
-        "\nWelcome to openSUSE 10.3 (X86-64) - Kernel \\r (\\l).\n\n\n" => "OPENSUSE_10-3",
-        "Red Hat Enterprise Linux Server release 5.3 (Tikanga)\nKernel \\r on an \\m\n\n" => "REDHAT_5-3",
-        "CentOS release 5.4 (Final)\nKernel \\r on an \\m\n\n" => "CENTOS_5-4",
-        "Scientific Linux SL release 5.5 (Boron)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_5-5",
-        "Scientific Linux SL release 5.6 (Boron)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_5-6",
-	      "Scientific Linux SL release 5.4 (Boron)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_5-4",
-	      "Scientific Linux SL release 5.7 (Boron)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_5-7",
-	      "Scientific Linux release 6.1 (Carbon)\nKernel \\r on an \\m\n\n" => "SCIENTIFIC_LINUX_6-1",
-	      "\nWelcome to SUSE Linux Enterprise Server 11 SP1  (x86_64) - Kernel \\r (\\l).\n\n" => "SLES_11-1"
+        "\nThis is \\n.\\O (\\s \\m \\r) \\t\n\n" => Distribution.debian(4),
+        "Ubuntu 7.10 \\n \\l\n\n" => Distribution.debian(4),
+        "Debian GNU/Linux 4.0 \\n \\l\n\n" => Distribution.debian(4),
+        "Debian GNU/Linux 5.0 \\n \\l\n\n" => Distribution.debian(5),
+        "Scientific Linux SL release 5.2 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,2),
+        "CentOS release 5.2 (Final)\nKernel \\r on an \\m\n\n" => Distribution.centos(5,2),
+        "CentOS release 5.3 (Final)\nKernel \\r on an \\m\n\n" => Distribution.centos(5,3),
+        "CentOS release 5.6 (Final)\nKernel \\r on an \\m\n\n" => Distribution.centos(5,6),
+        "\nWelcome to openSUSE 10.3 (X86-64) - Kernel \\r (\\l).\n\n\n" => Distribution.new('OPENSUSE','OPENSUSE',10,3),
+        "Red Hat Enterprise Linux Server release 5.3 (Tikanga)\nKernel \\r on an \\m\n\n" => Distribution.rhel(5,3),
+        "CentOS release 5.4 (Final)\nKernel \\r on an \\m\n\n" => Distribution.centos(5,4),
+        "Scientific Linux SL release 5.5 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,5),
+        "Scientific Linux SL release 5.6 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,6),
+        "Scientific Linux SL release 5.4 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,4),
+        "Scientific Linux SL release 5.7 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,7),
+        "Scientific Linux release 6.1 (Carbon)\nKernel \\r on an \\m\n\n" => Distribution.sl(6,1),
+        "Scientific Linux release 6.2 (Carbon)\nKernel \\r on an \\m\n\n" => Distribution.sl(6,2),
+        "\nWelcome to SUSE Linux Enterprise Server 11 SP1  (x86_64) - Kernel \\r (\\l).\n\n" => Distribution.new('SLES','SLES',11,1)
       }
+
       ARCHITECTURE_IDENTIFICATION_STRINGS={
         "x86-64"=>'x86-64',
         "Intel 80386"=>'i386'
       }
+
+      delegate :suse?, :redhat?, :unknown?, :to => :distro
+      # deprecated
+      delegate :suse?, :redhat?, :to => :distro, :prefix => :is
 
       def hostname(opts = {})
         Execution.info('Getting local machine hostname')
         run('/bin/hostname -s', as: lambda {|r| r.stdout.chomp})
       end
 
+      def distro
+        @distro ||= begin
+                      str = run("cat #{OPERATING_SYSTEM_IDENTIFICATION_FILE}").stdout.chomp
+                      Execution.info "OS IDENT = #{str.inspect}"
+                      OPERATING_SYSTEM_IDENTIFICATION_STRINGS[str]
+                    end || Distribution::UNKNOWN
+      end
+
       def operating_system
-        str=run("cat #{OPERATING_SYSTEM_IDENTIFICATION_FILE}").stdout.chomp
-	      info "OS IDENT = #{str.inspect}"
-        os=OPERATING_SYSTEM_IDENTIFICATION_STRINGS[str] || 'OTHER'
-        os_with_arch="#{os}_#{architecture}"
+        "#{distro}_#{architecture}"
       end
 
       def architecture
-        res='UNKNOWN'
-        ARCHITECTURE_IDENTIFICATION_STRINGS.each do |arch_string,arch|
-          if res == "UNKNOWN"
-            res=arch if run_bash("file /bin/bash | grep '#{arch_string}'").stdout
-          end
-        end
-	      res
-      end
-  
-      def is_suse?
-        return true if operating_system =~ /SUSE/
-        return true if operating_system =~ /SLES/
-        false
-      end
-
-      def is_redhat?
-	      return true if operating_system =~ /SCIENTIFIC/
-        return true if operating_system =~ /CENTOS/
-	      return true if operating_system =~ /REDHAT/
-	      false
+        @arch ||= ( ARCHITECTURE_IDENTIFICATION_STRINGS.find do |arch_string, arch|
+                      run_bash("file /bin/bash | grep '#{arch_string}'").stdout
+                    end || ['UNKNOWN']).last
       end
     end
   end
