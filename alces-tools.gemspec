@@ -5,7 +5,7 @@ Gem::Specification.new do |s|
   s.name = 'alces-tools'
   s.version = Alces::Tools::VERSION
   s.platform = Gem::Platform::RUBY
-  s.date = "2012-03-08"
+  s.date = "2012-03-15"
   s.authors = ['Stephen F. Norledge', 'Mark J. Titorenko']
   s.email = 'mark.titorenko@alces-software.com'
   s.homepage = 'http://github.com/alces-software/alces-tools'
@@ -30,6 +30,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'bundler'
   s.add_development_dependency 'bueller'
   s.add_development_dependency 'rake'
-  s.add_development_dependency 'rcov'
+  s.add_development_dependency 'simplecov'
 end
 
