@@ -149,7 +149,7 @@ module Alces
         "Scientific Linux SL release 5.4 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,4),
         "Scientific Linux SL release 5.7 (Boron)\nKernel \\r on an \\m\n\n" => Distribution.sl(5,7),
         "Scientific Linux release 6.1 (Carbon)\nKernel \\r on an \\m\n\n" => Distribution.sl(6,1),
-        "Scientific Linux release 6.2 (Carbon)\nKernel \\r on an \\m\n\n" => Distribution.sl(6,2),
+        "Scientific Linux release 6.2 (Carbon)\nKernel \\r on an \\m\n" => Distribution.sl(6,2),
         "\nWelcome to SUSE Linux Enterprise Server 11 SP1  (x86_64) - Kernel \\r (\\l).\n\n" => Distribution.new('SLES','SLES',11,1)
       }
 
