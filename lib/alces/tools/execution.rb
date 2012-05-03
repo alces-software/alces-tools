@@ -118,14 +118,14 @@ module Alces
         end
       end
 
-      def run_bash(*args)
+      def run_bash(*args, &block)
         opts = Execution.options_from(args)
         raise ":shell option should not be specified when using run_bash" if opts.has_key?(:shell)
         opts[:shell] = '/bin/bash'
-        run(*args, opts)
+        run(*args, opts, &block)
       end
       
-      def run_script(*args)
+      def run_script(*args, &block)
         opts = Execution.options_from(args)
         unless (script = args.shift).is_a?(String)
           raise "run_script should only be used with a String parameter"
@@ -142,10 +142,10 @@ module Alces
                 ''
               end
         cmd << script
-        run(cmd,opts)
+        run(cmd,opts,&block)
       end
       
-      def run(*args)
+      def run(*args, &block)
         opts = Execution.options_from(args)
         cmd_args = Execution.cmd_args_from(args)
         interactive = opts.has_key?(:pty) && opts[:pty]
@@ -159,7 +159,7 @@ module Alces
           [cmd_args.inspect, opts].join(?\n)
         end
 
-        Result.new.tap do |r|
+        r = Result.new.tap do |r|
           begin
             if interactive
               system(spawn_env, *cmd_args, spawn_opts)
@@ -188,6 +188,8 @@ module Alces
           end
           Execution.debug("Command execution completed"){r}
         end
+
+        block.nil? ? r : block.call(r)
       end
 
       def nonblock_reader(s)
