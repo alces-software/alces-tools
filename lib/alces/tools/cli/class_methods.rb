@@ -78,6 +78,7 @@ module Alces
 
         def log_to(log)
           preconditions << lambda do
+            log=::File::expand_path(log) if log.kind_of? String
             @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
             Alces::Tools::Logging.default = @logger
           end
