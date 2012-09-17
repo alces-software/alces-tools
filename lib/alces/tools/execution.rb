@@ -152,10 +152,9 @@ module Alces
         spawn_opts = opts[:options] || {}
         spawn_env = opts[:env] || {}
 
-        shell = opts[:shell]
-        # XXX Support array and strings perhaps?
-        shell_args = opts[:shell_args]
-        cmd_args = [shell, shell_args, '-c', cmd_args.join(' ')] unless shell.nil?
+        unless ( shell = opts[:shell] ).nil?
+          cmd_args = [shell, *opts[:shell_args], '-c', cmd_args.join(' ')]
+        end
 
         Execution.info("Executing command") do
           [cmd_args.inspect, opts].join(?\n)
