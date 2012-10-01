@@ -33,12 +33,12 @@ doc
 #tmtags
 #
 # For emacs:
-#*~
+*~
 #\#*
 #.\#*
 #
 # For vim:
-#*.swp
+*.swp
 #
 # mjt - Best practice is that, for gems, we ignore Gemfile.lock
 Gemfile.lock
