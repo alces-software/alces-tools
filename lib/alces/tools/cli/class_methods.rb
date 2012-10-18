@@ -24,6 +24,7 @@
 ################################################################################
 require 'alces/tools/cli/validators'
 require 'alces/tools/logging'
+require 'alces/tools/auth'
 
 module Alces
   module Tools
@@ -64,15 +65,20 @@ module Alces
 
         def root_only
           preconditions << lambda do
-            if ENV['USER'] != 'root'
+            if ! auth.superuser?
               STDERR.puts "Must be run as superuser"
               exit 1
             end
           end
         end
+        
+        def auth
+          @auth||=Alces::Tools::Auth::new
+        end
 
         def log_to(log)
           preconditions << lambda do
+            log=::File::expand_path(log) if log.kind_of? String
             @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
             Alces::Tools::Logging.default = @logger
           end
@@ -147,6 +153,7 @@ module Alces
 
         def option(name, *args)
           o = ClassMethods.opts_from_args(args)
+          return if o[:superuser] && ! auth.superuser?
           descriptor = {
             description: o[:description],
             names: [o[:long], o[:short]].compact,

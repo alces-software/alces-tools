@@ -152,14 +152,15 @@ module Alces
         spawn_opts = opts[:options] || {}
         spawn_env = opts[:env] || {}
 
-        shell = opts[:shell]
-        cmd_args = [shell, '-c', cmd_args.join(' ')] unless shell.nil?
+        unless ( shell = opts[:shell] ).nil?
+          cmd_args = [shell, *opts[:shell_args], '-c', cmd_args.join(' ')]
+        end
 
         Execution.info("Executing command") do
           [cmd_args.inspect, opts].join(?\n)
         end
 
-        r = Result.new.tap do |r|
+        result = Result.new.tap do |r|
           begin
             if interactive
               system(spawn_env, *cmd_args, spawn_opts)
@@ -189,7 +190,7 @@ module Alces
           Execution.debug("Command execution completed"){r}
         end
 
-        block.nil? ? r : block.call(r)
+        block.nil? ? result : block.call(result)
       end
 
       def nonblock_reader(s)

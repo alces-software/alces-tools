@@ -24,54 +24,24 @@
 ################################################################################
 module Alces
   module Tools
-    module Config
-      DEFAULT_CONFIG_PATH = '~/.alces/etc/:/etc/alces:/etc/opt/alces/:/opt/alces/etc:/opt/gridware/etc/opt/alces'
-
-      LOCAL_CONFIG_BASE=::File::join('/etc/opt/alces/')
-      SHARED_CONFIG_BASE=::File::join('/opt/gridware/etc/opt/alces/')
+    class Auth
+      def initialize
+        establishLevel
+      end
       
-      class << self
-        def config_paths
-          @paths ||= (ENV['ALCES_CONFIG_PATH'] || DEFAULT_CONFIG_PATH).split(?:)
-        end
-
-        def find(name, fallback = true)          
-          cfg_file = name[-4..-1] == '.yml' ? name : "#{name}.yml"
-          config_paths.each do |path|
-            config_file = ::File::expand_path(::File.join(path,cfg_file))
-            return config_file if ::File.exists?(config_file)
-          end
-          fallback_find(cfg_file) if fallback
-        end
-
-        #Find a config file using the 3 Alces locations in sequence -> LOCAL, SHARED, GEM
-        def fallback_find(name)
-          configfile = local(name)
-          unless ::File::exists?(configfile)
-            configfile = shared(name)
-            unless ::File::exists?(configfile)
-              configfile = gem(name)
-            end
-          end
-          configfile
-        end
-        
-        #return the path of the file as if it was local config
-        def local(name)
-          ::File::join(LOCAL_CONFIG_BASE,name)
-        end
-    
-        #return the path of the file as if it was shared config
-        def shared(name)
-          ::File::join(SHARED_CONFIG_BASE,name)
-        end
-        
-        #return the path of the file as if it was gem config
-        def gem(name)
-          ::File::join(::File::dirname(::File::expand_path($0)),"../config/#{name}")
+      def superuser?
+        @level < 1
+      end
+      
+      private
+      
+      def establishLevel
+        if ENV['USER'] != 'root'
+          @level=1
+        else
+          @level=0
         end
       end
     end
   end
 end
-
