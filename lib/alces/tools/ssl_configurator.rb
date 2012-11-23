@@ -23,6 +23,7 @@
 #                                                                              #
 ################################################################################
 require 'openssl'
+require 'alces/tools/core_ext/drb/ssl'
 
 module Alces
   module Tools
