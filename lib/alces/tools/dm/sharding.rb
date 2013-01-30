@@ -34,7 +34,7 @@ module Alces
       #        #   1) identifies the shard to use for the given user, and
       #        #   2) is unique across all modules using Alces::Tools::DM::Sharding.
       #        def shard_name(user)
-      #          :"disk_quotas_#{user.tenant.butler_address}"
+      #          :"disk_quotas_#{user.tenant.id}"
       #        end
       #
       #        # Return a hash, with a single mandatory option, :adapter,
@@ -43,7 +43,7 @@ module Alces
       #        def options(user)
       #          {
       #            adapter: 'disk_quotas',
-      #            butler: { address: user.tenant.butler_address, token: user.butler_token },
+      #            target: user.tenant,
       #            service: Alces.app.disk_quotas
       #          }
       #        end
