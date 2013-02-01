@@ -34,8 +34,8 @@ module Alces
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         pepper = opts[:pepper]
         salt = hash[0..salt_len-1]
-        result = [Digest::SHA1.digest("#{hash[0..salt_len-1]}:#{secret}:#{pepper}")].pack('m').chomp
-        hash[8..-1] == result
+        result = [Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}")].pack('m').chomp
+        hash == "#{salt}#{result}"
       rescue
         STDERR.puts "#{$!.class}: #{$!.message}"
         STDERR.puts $!.backtrace.join("\n")
@@ -45,6 +45,10 @@ module Alces
       def create_hash(secret, opts = {})
         salt = opts[:salt] || SecureRandom.base64(6) # generates an 8-character salt
         salt_len = (opts[:salt_length] || salt.length).to_i
+        # XXX What happens if opts[:salt_length] is greater than salt.length.
+        # The hash will be constructed without problem. Checking if it is a
+        # valid hash is likely to fail though. The user will use the same
+        # salt_length in both places and extract salt plus more.
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         salt = salt[0..salt_len-1]
         pepper = opts[:pepper]
