@@ -34,8 +34,7 @@ module Alces
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         pepper = opts[:pepper]
         salt = hash[0..salt_len-1]
-        result = [Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}")].pack('m').chomp
-        hash == "#{salt}#{result}"
+        hash == construct_hash(salt, pepper, secret)
       rescue
         STDERR.puts "#{$!.class}: #{$!.message}"
         STDERR.puts $!.backtrace.join("\n")
@@ -52,6 +51,12 @@ module Alces
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         salt = salt[0..salt_len-1]
         pepper = opts[:pepper]
+        construct_hash(salt, pepper, secret)
+      end
+
+      private
+
+      def construct_hash(salt, pepper, secret)
         result = [Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}")].pack('m').chomp
         "#{salt}#{result}"
       end
