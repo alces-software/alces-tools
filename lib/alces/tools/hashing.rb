@@ -40,15 +40,19 @@ module Alces
         STDERR.puts $!.backtrace.join("\n")
         false
       end
-      
+
       def create_hash(secret, opts = {})
         salt = opts[:salt] || SecureRandom.base64(6) # generates an 8-character salt
         salt_len = (opts[:salt_length] || salt.length).to_i
-        # XXX What happens if opts[:salt_length] is greater than salt.length.
-        # The hash will be constructed without problem. Checking if it is a
-        # valid hash is likely to fail though. The user will use the same
-        # salt_length in both places and extract salt plus more.
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
+        if salt_len > salt.length
+          # If the salt length is greater than the length of the salt, the
+          # hash will be created with a smaller than expected salt. When
+          # checking the validity of the hash, salt_len characters will be
+          # extracted from the hash. This will be too many, resulting in all
+          # hashes being invalid.
+          raise "Invalid salt length. the salt length is greater than the length of the salt"
+        end
         salt = salt[0..salt_len-1]
         pepper = opts[:pepper]
         construct_hash(salt, pepper, secret)
