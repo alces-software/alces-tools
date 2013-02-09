@@ -29,7 +29,7 @@ module Alces
   module Tools
     module Hashing
       def valid_hash?(hash, secret, opts = {})
-        return false if hash.nil?
+        return false unless hash.is_a?(String)
         salt_len = (opts[:salt_length] || 8).to_i
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         pepper = opts[:pepper]
