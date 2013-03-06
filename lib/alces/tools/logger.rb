@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2007-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -50,6 +50,7 @@
 
 require 'thread'
 require 'fileutils'
+require 'alces/tools/throttling_buffer'
 
 module Alces
   module Tools
@@ -170,8 +171,10 @@ module Alces
           opts = {}
         end
         @tmp_levels    = {}
-        @buffer        = Hash.new { |h,k| h[k] = [] }
-        @auto_flushing = 1
+        @buffer        = Hash.new { |h,k| h[k] = ThrottlingBuffer.new }
+        # This will flush once two messages have been buffered. I.e., it will
+        # buffer, and throttle, 1 message.
+        @auto_flushing = 2
         @guard = Mutex.new
 
         if log.respond_to?(:write)
@@ -208,14 +211,14 @@ module Alces
         else
           message = render_message(message || (block && block.call))
         end
-        message = format_message(severity, Time.now, progname, message)
+        formatted_message = format_message(severity, Time.now, progname, message)
 
         # If a newline is necessary then create a new message ending with a newline.
         # Ensures that the original message is not mutated.
-        message = "#{message}\n" unless message[-1] == ?\n
-        buffer << message
+        formatted_message = "#{formatted_message}\n" unless formatted_message[-1] == ?\n
+        buffer << [message, formatted_message]
         auto_flush
-        message
+        formatted_message
       end
 
       # Dynamically add methods such as:
@@ -259,6 +262,17 @@ module Alces
         # Clear buffers associated with dead threads or else spawned threads
         # that don't call flush will result in a memory leak.
         flush_dead_buffers
+      end
+    end
+
+    # Flush each buffer and remove it from the @buffer hash.
+    def flush_all
+      @guard.synchronize do
+        @buffer.keys.each do |thread|
+          buffer = @buffer[thread]
+          write_buffer(buffer)
+          @buffer.delete(thread)
+        end
       end
     end
 
