@@ -283,6 +283,16 @@ module Alces
       @log = nil
     end
 
+    # Clear all buffers without logging them. Useful when forking a child
+    # process to prevent the child from eventually logging all of the parents
+    # buffered logs.
+    def clear_buffers
+      @buffer.clear
+    rescue
+      STDERR.puts "Unexpected error whilst clearing buffers"
+      STDERR.puts $!
+    end
+
     protected
     
     SEV_LABEL = %w(DEBUG INFO WARN ERROR FATAL UNKNOWN)
