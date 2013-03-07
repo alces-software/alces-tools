@@ -172,9 +172,10 @@ module Alces
         end
         @tmp_levels    = {}
         @buffer        = Hash.new { |h,k| h[k] = ThrottlingBuffer.new }
-        # This will flush once two messages have been buffered. I.e., it will
-        # buffer, and throttle, 1 message.
-        @auto_flushing = 2
+        # This will flush after every message has been received. To activate
+        # both buffering and throttling set this to a number greater than 1.
+        # There is currently no mechanism to buffer without throttling.
+        @auto_flushing = 1
         @guard = Mutex.new
 
         if log.respond_to?(:write)
