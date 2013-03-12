@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2007-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -50,6 +50,7 @@
 
 require 'thread'
 require 'fileutils'
+require 'alces/tools/throttling_buffer'
 
 module Alces
   module Tools
@@ -170,7 +171,10 @@ module Alces
           opts = {}
         end
         @tmp_levels    = {}
-        @buffer        = Hash.new { |h,k| h[k] = [] }
+        @buffer        = Hash.new { |h,k| h[k] = ThrottlingBuffer.new }
+        # This will flush after every message has been received. To activate
+        # both buffering and throttling set this to a number greater than 1.
+        # There is currently no mechanism to buffer without throttling.
         @auto_flushing = 1
         @guard = Mutex.new
 
@@ -208,14 +212,14 @@ module Alces
         else
           message = render_message(message || (block && block.call))
         end
-        message = format_message(severity, Time.now, progname, message)
+        formatted_message = format_message(severity, Time.now, progname, message)
 
         # If a newline is necessary then create a new message ending with a newline.
         # Ensures that the original message is not mutated.
-        message = "#{message}\n" unless message[-1] == ?\n
-        buffer << message
+        formatted_message = "#{formatted_message}\n" unless formatted_message[-1] == ?\n
+        buffer << [message, formatted_message]
         auto_flush
-        message
+        formatted_message
       end
 
       # Dynamically add methods such as:
@@ -262,10 +266,31 @@ module Alces
       end
     end
 
+    # Flush each buffer and remove it from the @buffer hash.
+    def flush_all
+      @guard.synchronize do
+        @buffer.keys.each do |thread|
+          buffer = @buffer[thread]
+          write_buffer(buffer)
+          @buffer.delete(thread)
+        end
+      end
+    end
+
     def close
       flush
       @log.close if @log.respond_to?(:close)
       @log = nil
+    end
+
+    # Clear all buffers without logging them. Useful when forking a child
+    # process to prevent the child from eventually logging all of the parents
+    # buffered logs.
+    def clear_buffers
+      @buffer.clear
+    rescue
+      STDERR.puts "Unexpected error whilst clearing buffers"
+      STDERR.puts $!
     end
 
     protected
