@@ -61,10 +61,10 @@ module Alces
         def shard(user, &block)
           shard_name = shard_name(user)
           unless ADAPTERS[shard_name]
-            ADAPTERS[shard_name] = DataMapper.setup(shard_name, options(user))
+            ADAPTERS[shard_name] = ::DataMapper.setup(shard_name, options(user))
           end
 
-          DataMapper.repository(shard_name, &block)
+          ::DataMapper.repository(shard_name, &block)
         end
       end
     end
