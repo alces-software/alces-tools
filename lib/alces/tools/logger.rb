@@ -252,29 +252,55 @@ module Alces
         end
     end
 
+    def thread_safety_disabled?
+      !!@thread_safety_disabled
+    end
+
+    def thread_safety_disabled=(b)
+      @thread_safety_disabled = b
+    end
+
+    def thread_safely(&block)
+      if thread_safety_disabled?
+        block.call
+      else
+        @guard.synchronize(&block)
+      end
+    end
+
+    # Not thread-safe - use #flush unless you have a good reason to call this.
+    def flush!
+      write_buffer(buffer)
+      
+      # Important to do this even if buffer was empty or else @buffer will
+      # accumulate empty arrays for each request where nothing was logged.
+      clear_buffer
+      
+      # Clear buffers associated with dead threads or else spawned threads
+      # that don't call flush will result in a memory leak.
+      flush_dead_buffers
+    end
+
+    # Thread-safe flush (unless thread-safety has been explicity
+    # disabled, eg. must be disabled when calling from within a trap)
     def flush
-      @guard.synchronize do
+      thread_safely { flush! }
+    end
+
+    # Flush each buffer and remove it from the @buffer hash without handling thread safety concerns.
+    def flush_all!
+      @buffer.keys.each do |thread|
+        buffer = @buffer[thread]
         write_buffer(buffer)
-
-        # Important to do this even if buffer was empty or else @buffer will
-        # accumulate empty arrays for each request where nothing was logged.
-        clear_buffer
-
-        # Clear buffers associated with dead threads or else spawned threads
-        # that don't call flush will result in a memory leak.
-        flush_dead_buffers
+        @buffer.delete(thread)
       end
     end
 
     # Flush each buffer and remove it from the @buffer hash.
+    # Thread-safe (unless thread-safety has been explicity disabled,
+    # eg. must be disabled when calling from within a trap)
     def flush_all
-      @guard.synchronize do
-        @buffer.keys.each do |thread|
-          buffer = @buffer[thread]
-          write_buffer(buffer)
-          @buffer.delete(thread)
-        end
-      end
+      thread_safely { flush_all! }
     end
 
     def close
