@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2011-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -48,26 +48,28 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Module
-  # Provides a delegate class method to easily expose contained objects' methods
-  # as your own. Pass one or more methods (specified as symbols or strings)
-  # and the name of the target object via the <tt>:to</tt> option (also a symbol
-  # or string). At least one method and the <tt>:to</tt> option are required.
+  # Provides a +delegate+ class method to easily expose contained objects'
+  # public methods as your own.
+  #
+  # The macro receives one or more method names (specified as symbols or
+  # strings) and the name of the target object via the <tt>:to</tt> option
+  # (also a symbol or string).
   #
   # Delegation is particularly useful with Active Record associations:
   #
   #   class Greeter < ActiveRecord::Base
   #     def hello
-  #       "hello"
+  #       'hello'
   #     end
   #
   #     def goodbye
-  #       "goodbye"
+  #       'goodbye'
   #     end
   #   end
   #
   #   class Foo < ActiveRecord::Base
   #     belongs_to :greeter
-  #     delegate :hello, :to => :greeter
+  #     delegate :hello, to: :greeter
   #   end
   #
   #   Foo.new.hello   # => "hello"
@@ -77,7 +79,7 @@ class Module
   #
   #   class Foo < ActiveRecord::Base
   #     belongs_to :greeter
-  #     delegate :hello, :goodbye, :to => :greeter
+  #     delegate :hello, :goodbye, to: :greeter
   #   end
   #
   #   Foo.new.goodbye # => "goodbye"
@@ -92,14 +94,26 @@ class Module
   #     def initialize
   #       @instance_array = [8,9,10,11]
   #     end
-  #     delegate :sum, :to => :CONSTANT_ARRAY
-  #     delegate :min, :to => :@@class_array
-  #     delegate :max, :to => :@instance_array
+  #     delegate :sum, to: :CONSTANT_ARRAY
+  #     delegate :min, to: :@@class_array
+  #     delegate :max, to: :@instance_array
   #   end
   #
   #   Foo.new.sum # => 6
   #   Foo.new.min # => 4
   #   Foo.new.max # => 11
+  #
+  # It's also possible to delegate a method to the class by using +:class+:
+  #
+  #   class Foo
+  #     def self.hello
+  #       "world"
+  #     end
+  #
+  #     delegate :hello, to: :class
+  #   end
+  #
+  #   Foo.new.hello # => "world"
   #
   # Delegates can optionally be prefixed using the <tt>:prefix</tt> option. If the value
   # is <tt>true</tt>, the delegate methods are prefixed with the name of the object being
@@ -108,10 +122,10 @@ class Module
   #   Person = Struct.new(:name, :address)
   #
   #   class Invoice < Struct.new(:client)
-  #     delegate :name, :address, :to => :client, :prefix => true
+  #     delegate :name, :address, to: :client, prefix: true
   #   end
   #
-  #   john_doe = Person.new("John Doe", "Vimmersvej 13")
+  #   john_doe = Person.new('John Doe', 'Vimmersvej 13')
   #   invoice = Invoice.new(john_doe)
   #   invoice.client_name    # => "John Doe"
   #   invoice.client_address # => "Vimmersvej 13"
@@ -119,49 +133,64 @@ class Module
   # It is also possible to supply a custom prefix.
   #
   #   class Invoice < Struct.new(:client)
-  #     delegate :name, :address, :to => :client, :prefix => :customer
+  #     delegate :name, :address, to: :client, prefix: :customer
   #   end
   #
   #   invoice = Invoice.new(john_doe)
-  #   invoice.customer_name    # => "John Doe"
-  #   invoice.customer_address # => "Vimmersvej 13"
+  #   invoice.customer_name    # => 'John Doe'
+  #   invoice.customer_address # => 'Vimmersvej 13'
   #
-  # If the delegate object is +nil+ an exception is raised, and that happens
-  # no matter whether +nil+ responds to the delegated method. You can get a
-  # +nil+ instead with the +:allow_nil+ option.
+  # If the target is +nil+ and does not respond to the delegated method a
+  # +NoMethodError+ is raised, as with any other value. Sometimes, however, it
+  # makes sense to be robust to that situation and that is the purpose of the
+  # <tt>:allow_nil</tt> option: If the target is not +nil+, or it is and
+  # responds to the method, everything works as usual. But if it is +nil+ and
+  # does not respond to the delegated method, +nil+ is returned.
   #
-  #  class Foo
-  #    attr_accessor :bar
-  #    def initialize(bar = nil)
-  #      @bar = bar
-  #    end
-  #    delegate :zoo, :to => :bar
-  #  end
+  #   class User < ActiveRecord::Base
+  #     has_one :profile
+  #     delegate :age, to: :profile
+  #   end
   #
-  #  Foo.new.zoo   # raises NoMethodError exception (you called nil.zoo)
+  #   User.new.age # raises NoMethodError: undefined method `age'
   #
-  #  class Foo
-  #    attr_accessor :bar
-  #    def initialize(bar = nil)
-  #      @bar = bar
-  #    end
-  #    delegate :zoo, :to => :bar, :allow_nil => true
-  #  end
+  # But if not having a profile yet is fine and should not be an error
+  # condition:
   #
-  #  Foo.new.zoo   # returns nil
+  #   class User < ActiveRecord::Base
+  #     has_one :profile
+  #     delegate :age, to: :profile, allow_nil: true
+  #   end
+  #
+  #   User.new.age # nil
+  #
+  # Note that if the target is not +nil+ then the call is attempted regardless of the
+  # <tt>:allow_nil</tt> option, and thus an exception is still raised if said object
+  # does not respond to the method:
+  #
+  #   class Foo
+  #     def initialize(bar)
+  #       @bar = bar
+  #     end
+  #
+  #     delegate :name, to: :@bar, allow_nil: true
+  #   end
+  #
+  #   Foo.new("Bar").name # raises NoMethodError: undefined method `name'
   #
   def delegate(*methods)
     options = methods.pop
     unless options.is_a?(Hash) && to = options[:to]
-      raise ArgumentError, "Delegation needs a target. Supply an options hash with a :to key as the last argument (e.g. delegate :hello, :to => :greeter)."
-    end
-    prefix, to, allow_nil = options[:prefix], options[:to], options[:allow_nil]
-
-    if prefix == true && to.to_s =~ /^[^a-z_]/
-      raise ArgumentError, "Can only automatically set the delegation prefix when delegating to a method."
+      raise ArgumentError, 'Delegation needs a target. Supply an options hash with a :to key as the last argument (e.g. delegate :hello, to: :greeter).'
     end
 
-    method_prefix =
+    prefix, allow_nil = options.values_at(:prefix, :allow_nil)
+
+    if prefix == true && to =~ /^[^a-z_]/
+      raise ArgumentError, 'Can only automatically set the delegation prefix when delegating to a method.'
+    end
+
+    method_prefix = \
       if prefix
         "#{prefix == true ? to : prefix}_"
       else
@@ -171,25 +200,39 @@ class Module
     file, line = caller.first.split(':', 2)
     line = line.to_i
 
-    methods.each do |method|
-      method = method.to_s
+    to = to.to_s
+    to = 'self.class' if to == 'class'
 
+    methods.each do |method|
+      # Attribute writer methods only accept one argument. Makes sure []=
+      # methods still accept two arguments.
+      definition = (method =~ /[^\]]=$/) ? 'arg' : '*args, &block'
+
+      # The following generated methods call the target exactly once, storing
+      # the returned value in a dummy variable.
+      #
+      # Reason is twofold: On one hand doing less calls is in general better.
+      # On the other hand it could be that the target has side-effects,
+      # whereas conceptualy, from the user point of view, the delegator should
+      # be doing one call.
       if allow_nil
-        module_eval(<<-EOS, file, line - 2)
-          def #{method_prefix}#{method}(*args, &block)        # def customer_name(*args, &block)
-            if #{to} || #{to}.respond_to?(:#{method})         #   if client || client.respond_to?(:name)
-              #{to}.__send__(:#{method}, *args, &block)       #     client.__send__(:name, *args, &block)
+        module_eval(<<-EOS, file, line - 3)
+          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block)
+            _ = #{to}                                         #   _ = client
+            if !_.nil? || nil.respond_to?(:#{method})         #   if !_.nil? || nil.respond_to?(:name)
+              _.#{method}(#{definition})                      #     _.name(*args, &block)
             end                                               #   end
           end                                                 # end
         EOS
       else
         exception = %(raise "#{self}##{method_prefix}#{method} delegated to #{to}.#{method}, but #{to} is nil: \#{self.inspect}")
 
-        module_eval(<<-EOS, file, line - 1)
-          def #{method_prefix}#{method}(*args, &block)        # def customer_name(*args, &block)
-            #{to}.__send__(:#{method}, *args, &block)         #   client.__send__(:name, *args, &block)
+        module_eval(<<-EOS, file, line - 2)
+          def #{method_prefix}#{method}(#{definition})        # def customer_name(*args, &block)
+            _ = #{to}                                         #   _ = client
+            _.#{method}(#{definition})                        #   _.name(*args, &block)
           rescue NoMethodError                                # rescue NoMethodError
-            if #{to}.nil?                                     #   if client.nil?
+            if _.nil?                                         #   if _.nil?
               #{exception}                                    #     # add helpful message to the exception
             else                                              #   else
               raise                                           #     raise
