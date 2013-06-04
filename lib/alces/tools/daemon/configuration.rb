@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2007-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -23,6 +23,7 @@
 #                                                                              #
 ################################################################################
 require 'alces/tools/config'
+require 'yaml'
 
 module Alces
   module Tools
@@ -44,12 +45,12 @@ module Alces
 
         def load_global_config(cfg)
           if cfg_file = Alces::Tools::Config.find(cfg, false)
-            YAML::load_file(cfg_file)
+            YAML.load_file(cfg_file)
           end
         end
 
         def load_config(cfg)
-          load_global_config(cfg) || YAML::load_file(cfg)
+          load_global_config(cfg) || YAML.load_file(cfg)
         rescue
           raise ArgumentError, "Unable to load config \'#{cfg}\' - implement #load_config in subclass?"
         end
