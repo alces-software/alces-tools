@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2007-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -25,6 +25,7 @@
 require 'alces/tools/cli/validators'
 require 'alces/tools/logging'
 require 'alces/tools/auth'
+require 'yaml'
 
 module Alces
   module Tools
@@ -46,8 +47,8 @@ module Alces
       
         def config
           begin
-            configfile=Alces::Tools::Config::find(get_config_filename)
-            @config ||= YAML::load_file(configfile)
+            configfile=Alces::Tools::Config.find(get_config_filename)
+            @config ||= YAML.load_file(configfile)
             raise unless @config.kind_of? Hash
             @config
           rescue
@@ -73,12 +74,12 @@ module Alces
         end
         
         def auth
-          @auth||=Alces::Tools::Auth::new
+          @auth ||= Alces::Tools::Auth.new
         end
 
         def log_to(log)
           preconditions << lambda do
-            log=::File::expand_path(log) if log.kind_of? String
+            log = ::File.expand_path(log) if log.kind_of? String
             @logger = Alces::Tools::Logger.new(log, :progname => @name, :formatter => :full)
             Alces::Tools::Logging.default = @logger
           end

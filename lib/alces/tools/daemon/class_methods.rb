@@ -1,5 +1,5 @@
 ################################################################################
-# (c) Copyright 2007-2011 Alces Software Ltd & Stephen F Norledge.             #
+# (c) Copyright 2007-2013 Alces Software Ltd & Stephen F Norledge.             #
 #                                                                              #
 # Alces HPC Software Toolkit                                                   #
 #                                                                              #
@@ -24,6 +24,7 @@
 ################################################################################
 require 'alces/tools/logging'
 require 'alces/tools/daemon/configuration'
+require 'yaml'
 
 module Alces
   module Tools
