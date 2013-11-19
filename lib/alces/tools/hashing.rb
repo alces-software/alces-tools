@@ -34,7 +34,9 @@ module Alces
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         pepper = opts[:pepper]
         salt = hash[0..salt_len-1]
-        hash == construct_hash(salt, pepper, secret)
+        constructed = construct_hash(salt, pepper, secret, urlsafe: opts[:urlsafe] || false)
+        constructed = constructed[0..(opts[:length]-1)] if opts[:length]
+        hash == constructed
       rescue
         STDERR.puts "#{$!.class}: #{$!.message}"
         STDERR.puts $!.backtrace.join("\n")
@@ -42,7 +44,7 @@ module Alces
       end
 
       def create_hash(secret, opts = {})
-        salt = opts[:salt] || SecureRandom.base64(6) # generates an 8-character salt
+        salt = opts[:salt] || SecureRandom.urlsafe_base64(6) # generates an 8-character salt
         salt_len = (opts[:salt_length] || salt.length).to_i
         raise "Invalid salt length, must be positive integer" if salt_len <= 0
         if salt_len > salt.length
@@ -55,13 +57,25 @@ module Alces
         end
         salt = salt[0..salt_len-1]
         pepper = opts[:pepper]
-        construct_hash(salt, pepper, secret)
+        h = construct_hash(salt, pepper, secret, urlsafe: opts[:urlsafe] || false)
+        if opts[:length]
+          if opts[:length] <= salt_len
+            raise 'Invalid length; the specified length is shorter or equal to the length of the salt'
+          end
+          h = h[0..(opts[:length] - 1)]
+        end
+        h
       end
 
       private
 
-      def construct_hash(salt, pepper, secret)
-        result = [Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}")].pack('m').chomp
+      def construct_hash(salt, pepper, secret, urlsafe: false)
+        if urlsafe
+          require 'base64'
+          result = Base64.urlsafe_encode64(Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}"))
+        else
+          result = [Digest::SHA1.digest("#{salt}:#{secret}:#{pepper}")].pack('m').chomp
+        end
         "#{salt}#{result}"
       end
 
