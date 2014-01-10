@@ -178,7 +178,7 @@ module Alces
         @auto_flushing = 1
         @guard = Mutex.new
 
-        if log.respond_to?(:write)
+        if !log.is_a?(Pathname) && log.respond_to?(:write)
           @log = log
         elsif File.exist?(log)
           @log = open_log(log, (File::WRONLY | File::APPEND))
