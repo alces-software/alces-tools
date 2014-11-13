@@ -78,7 +78,7 @@ module Alces
           def included(mod)
             Alces::Tools::Logger::Severity.constants.each do |s|
               s = s.to_s.downcase
-              mod.delegate s.to_sym, s[0..0].to_sym, to: mod
+              mod.delegate s.to_sym, s[0..0].to_sym, allow_nil: true, to: mod
             end
           end
         end
